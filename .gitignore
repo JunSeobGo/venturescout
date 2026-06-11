@@ -1,0 +1,39 @@
+# ── 비밀/환경 (절대 커밋 금지) ──
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets/
+aws.json
+credentials
+
+# ── Python ──
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# ── 데이터/모델 (대용량, 커밋 금지) ──
+data/raw/
+data/seed/*.csv
+data/seed/*.parquet
+*.parquet
+models/
+*.bin
+*.safetensors
+.chroma/
+
+# ── IDE / OS ──
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# ── Docker volume ──
+pgdata/
