@@ -10,7 +10,8 @@ from __future__ import annotations
 from langgraph.graph import StateGraph, START, END
 from shared.state import VentureScoutState
 from shared.contracts import AgentFinding, CriticResult
-from retrieval.tools import retrieve, vector_search
+from retrieval.tools import vector_search
+from retrieval.agents import run_market_agent, run_competitor_agent
 
 # TODO(C): Bedrock ChatBedrockConverse 연결, 프롬프트·few-shot·가드레일 중앙 배포
 
@@ -29,10 +30,10 @@ def _leaf_finding(agent: str, depth: str) -> AgentFinding:
 
 
 def market_node(state):       # ② B 소유, full
-    retrieve("H1", "demand"); return {"findings": [_leaf_finding("market", "full")]}
+    return {"findings": [run_market_agent(state)]}
 
 def competitor_node(state):   # ③ B 소유, light
-    return {"findings": [_leaf_finding("competitor", "light")]}
+    return {"findings": [run_competitor_agent(state)]}
 
 def tech_node(state):         # ④ C 소유, light
     return {"findings": [_leaf_finding("tech", "light")]}
