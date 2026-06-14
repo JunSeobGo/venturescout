@@ -5,7 +5,7 @@
 *.pem
 *.key
 secrets/
-aws.json
+*.json
 credentials
 
 # ── Python ──
