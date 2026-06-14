@@ -8,6 +8,7 @@ boto3
 fastapi
 uvicorn[standard]
 chainlit
+httpx                    # ui.py SSE 클라이언트
 
 # ── DB / 검색 ──
 psycopg2-binary
