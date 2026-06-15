@@ -1,5 +1,5 @@
 -- VentureScout Tier 0 — PostgreSQL 초기화 (9 tables)
--- 원칙: 계약 strict / payload JSONB / pgvector 단일 스토어
+-- 원칙: 계약 strict / output_json JSONB / pgvector 단일 스토어
 -- 임베딩 차원: 768 (PatentSBERTa·KorPatBERT). e5 폴백은 1024로 변경.
 
 CREATE EXTENSION IF NOT EXISTS vector;

@@ -1,16 +1,64 @@
-"""계약 스키마 검증 — Day 1부터 green 유지."""
-from shared.contracts import AgentFinding, EvidenceItem
+from pydantic import ValidationError
+
+from shared.contracts import AgentRun, EvidenceItem, IPOverlapCandidate
 
 
-def test_agent_finding_requires_grounding():
-    f = AgentFinding(agent="ip", hypothesis_id="H5", signal="중첩 신호 중간",
-                     grounded_on=["ev_0412"], confidence="mid", depth="full")
-    assert f.grounded_on == ["ev_0412"]
-    assert f.payload == {}                      # 느슨 payload 기본 빈 dict
+def test_agent_run_requires_grounding():
+    run = AgentRun(
+        agent_run_id="run_1",
+        job_id="job_1",
+        hypothesis_id="H5",
+        agent_name="ip",
+        grounded_on=["ev_0412"],
+        confidence="mid",
+        depth="full",
+    )
+    assert run.grounded_on == ["ev_0412"]
+    assert run.output_json == {}
+
+
+def test_agent_run_rejects_empty_grounding():
+    try:
+        AgentRun(
+            job_id="job_1",
+            hypothesis_id="H5",
+            agent_name="ip",
+            grounded_on=[],
+            confidence="mid",
+            depth="full",
+        )
+    except ValidationError as exc:
+        assert "grounded_on" in str(exc)
+    else:
+        raise AssertionError("AgentRun accepted empty grounded_on")
 
 
 def test_evidence_stance_enum():
-    e = EvidenceItem(evidence_id="ev_1", hypothesis_id="H1", document_id="d1",
-                     source_type="seed_review", evidence_text="...",
-                     stance="contradicts", reliability_score=0.6)
-    assert e.stance == "contradicts"
+    evidence = EvidenceItem(
+        evidence_id="ev_1",
+        job_id="job_1",
+        hypothesis_id="H1",
+        document_id="d1",
+        source_type="seed_review",
+        evidence_text="...",
+        stance="contradicts",
+        relevance_score=0.7,
+        reliability_score=0.6,
+    )
+    assert evidence.stance == "contradicts"
+
+
+def test_ip_overlap_candidate_matches_signature_table():
+    candidate = IPOverlapCandidate(
+        candidate_id="cand_1",
+        job_id="job_1",
+        hypothesis_id="H5",
+        limitation_id="lim_1",
+        evidence_id="ev_1",
+        plan_technical_element="meeting summarization",
+        lexical_score=0.72,
+        similarity_score=0.84,
+        hybrid_score=0.8,
+        rank=1,
+    )
+    assert candidate.hybrid_score == 0.8

@@ -1,5 +1,5 @@
 // VentureScout Tier 0 — 9 tables (기본 6 + 시그니처 3)
-// dbdiagram.io 붙여넣기용. 원칙: 계약 strict / payload JSON / pgvector 단일 스토어
+// dbdiagram.io 붙여넣기용. 원칙: 계약 strict / output_json / pgvector 단일 스토어
 
 Table ideas {
   idea_id uuid [pk]

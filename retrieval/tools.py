@@ -1,38 +1,59 @@
+"""Track C 에이전트가 사용하는 mock 검색 도구.
+
+운영 환경에서는 Track B가 documents, evidence_items, claim_limitations에 대한
+하이브리드 검색으로 본문을 교체한다. 함수 시그니처는 이미 9개 테이블
+계약을 반환하므로, 에이전트는 병렬로 개발할 수 있다.
 """
-Track B — 검색 tool (에이전트가 호출).
-Day 1엔 mock 반환 → C/D가 B 완성 전에 병렬 개발.
-실제 구현 시 시그니처(반환 타입)는 유지하고 내부만 pgvector+tsvector로 교체.
-"""
+
 from __future__ import annotations
-from shared.contracts import EvidenceItem, OverlapCandidate
 
-# TODO(B): pgvector + tsvector 하이브리드, rerank, 임베딩 모델 연결
+from agents.mock_data import MOCK_EVIDENCE, MOCK_IP_CANDIDATES
+from shared.contracts import EvidenceItem, IPOverlapCandidate
 
 
-def retrieve(hypothesis_id: str, query: str, k: int = 5) -> list[EvidenceItem]:
-    """가설별 찬반 근거 회수. 지금은 mock."""
-    return [
+def retrieve(
+    hypothesis_id: str,
+    query: str,
+    *,
+    job_id: str = "job_mock_001",
+    k: int = 5,
+) -> list[EvidenceItem]:
+    """가설과 관련된 evidence_items 행을 반환한다."""
+
+    matched = [
         EvidenceItem(
-            evidence_id="ev_mock_0001",
-            hypothesis_id=hypothesis_id,
-            document_id="doc_mock_0001",
-            source_type="seed_competitor",
-            evidence_text="[MOCK] 유료 경쟁 도구 다수 존재",
-            stance="contradicts",
-            reliability_score=0.6,
+            job_id=job_id,
+            **item,
         )
+        for item in MOCK_EVIDENCE
+        if item["hypothesis_id"] == hypothesis_id
     ]
 
+    return matched[:k]
 
-def vector_search(technical_elements: list[str], k: int = 10) -> list[OverlapCandidate]:
-    """시그니처: 기술요소 ↔ 특허 limitation 매칭 후보. 지금은 mock."""
-    return [
-        OverlapCandidate(
-            candidate_id="cand_mock_0001",
-            limitation_id="lim_mock_0001",
-            evidence_id="ev_mock_0002",
-            plan_technical_element=technical_elements[0] if technical_elements else "STT",
-            hybrid_score=0.86,
-            rank=1,
+
+def vector_search(
+    technical_elements: list[str],
+    *,
+    job_id: str = "job_mock_001",
+    hypothesis_id: str = "H5",
+    k: int = 10,
+) -> list[IPOverlapCandidate]:
+    """기계가 생성한 IP 중첩 후보를 반환한다. 법적 판단은 아니다."""
+
+    elements = set(technical_elements)
+    matched = [
+        IPOverlapCandidate(
+            job_id=job_id,
+            **{
+                key: value
+                for key, value in item.items()
+                if key != "limitation_text"
+            },
         )
+        for item in MOCK_IP_CANDIDATES
+        if item["hypothesis_id"] == hypothesis_id
+        and (not elements or item["plan_technical_element"] in elements)
     ]
+
+    return matched[:k]
