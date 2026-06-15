@@ -7,6 +7,7 @@
 secrets/
 aws.json
 credentials
+credentials/
 
 # ── Python ──
 __pycache__/
