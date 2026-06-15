@@ -232,7 +232,7 @@ def verify():
         print(f"독립항 비율             : {ratio:.1f}% {status}")
 
     print("========================")
-    print(f"{doc_count}건 적제 완료")
+    print(f"{doc_count}건 적재 완료")
 
 if __name__ == "__main__":
     filename = "raw/patents/patents_20260615_173739.json"  # ← 여기 변경
