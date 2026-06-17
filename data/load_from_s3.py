@@ -20,7 +20,11 @@ def connect_db():
         port=os.getenv('POSTGRES_PORT'),
         dbname=os.getenv('POSTGRES_DB'),
         user=os.getenv('POSTGRES_USER'),
-        password=os.getenv('POSTGRES_PASSWORD')
+        password=os.getenv('POSTGRES_PASSWORD'),
+        keepalives=1,
+        keepalives_idle=60,
+        keepalives_interval=10,
+        keepalives_count=5
     )
 
 # s3 클라이언트 함수
@@ -108,7 +112,7 @@ def save_to_db(rows):
                 SELECT ext_id, document_id FROM documents
                 WHERE ext_id IN ({placeholders})
             """, pub_nums)
-            existing_docs = {row[0]: row[1] for row in cursor.fetchall()}
+            existing_docs = {row[0]: row[1] for row in cursor.fetchall()} # row[0] -> ext_id, row[1] -> document_id
 
             # ── Step 2: 새 documents만 배치 INSERT ──
             doc_data = []
@@ -319,18 +323,20 @@ def verify():
     print("========================")
     print(f"{doc_count}건 적재 완료")
 
-def get_latest_s3_file(prefix='raw/patents/'):
+def list_s3_files(prefix='raw/patents/'):
     s3 = connect_s3()
     response = s3.list_objects_v2(Bucket=os.getenv('S3_BUCKET_NAME'), Prefix=prefix)
     objects = response.get('Contents', [])
     if not objects:
         raise FileNotFoundError(f'S3에 {prefix} 하위 파일이 없습니다.')
-    latest = max(objects, key=lambda o: o['LastModified'])
-    return latest['Key']
+    return sorted(o['Key'] for o in objects)
+
 
 if __name__ == "__main__":
-    filename = get_latest_s3_file()
-    print(f'✅ 최신 파일 선택: {filename}')
-    rows = load_from_s3(filename)
-    save_to_db(rows)
+    files = list_s3_files()
+    print(f'✅ S3 파일 {len(files)}개 발견\n')
+    for filename in files:
+        print(f'▶ 처리 중: {filename}')
+        rows = load_from_s3(filename)
+        save_to_db(rows)
     verify()
