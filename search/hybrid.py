@@ -32,7 +32,7 @@ class HybridSearcher:
         query: str,
         top_k: int | None = None,
         code_filter: str | None = None,   # CPC(USPTO) 또는 IPC(KIPRIS) 접두사 → documents.meta
-        independent_only: bool = True,
+        independent_only: bool = False,
     ) -> list[dict]:
         """
         특허 청구항 limitation 하이브리드 검색 (시그니처: 청구항 중첩 분석).
