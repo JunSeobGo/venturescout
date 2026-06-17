@@ -160,7 +160,7 @@ class HybridSearcher:
         query_vec = self.embedder.embed(query)
         ts_lang = "korean" if config.is_korean else "english"
 
-        conditions = ["embedding IS NOT NULL"]
+        conditions = ["embedding IS NOT NULL", "clean_text IS NOT NULL"]
         params: dict = dict(vec=query_vec.tolist(), query=query, top_k=top_k)
 
         if source_types:

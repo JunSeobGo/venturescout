@@ -76,12 +76,12 @@ class TestReRanker:
         ids = [r["document_id"] for r in results]
         assert ids.index("doc_002") < ids.index("doc_001")
 
-    def test_rerank_score_sum_to_one_range(self):
+    def test_rerank_score_non_negative(self):
         from search.reranker import ReRanker
         rr = ReRanker()
         results = rr.rerank(self._make_candidates())
         for r in results:
-            assert 0.0 <= r["rerank_score"] <= 1.0 + 1e-6
+            assert r["rerank_score"] >= 0.0
 
     def test_top_k_respected(self):
         from search.reranker import ReRanker

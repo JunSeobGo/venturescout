@@ -59,6 +59,16 @@ class ReRanker:
         reliability = float(reliability)
 
         freshness = item.get("freshness_score")
+        # TRACK_B §5-2: 출원일 기준 10년 선형 감쇠 — meta.filing_date 우선 계산
+        meta = item.get("meta") or {}
+        filing_date_str = str(meta.get("filing_date", "")) if isinstance(meta, dict) else ""
+        if filing_date_str and len(filing_date_str) >= 4:
+            import datetime
+            try:
+                years_ago = datetime.date.today().year - int(filing_date_str[:4])
+                freshness = max(0.0, 1.0 - years_ago / 10.0)
+            except (ValueError, TypeError):
+                pass
         freshness = float(freshness) if freshness is not None else 0.5
 
         # contradiction_value — stance(가설별 태깅)가 있을 때만 의미 있음
@@ -79,6 +89,7 @@ class ReRanker:
 
         return {
             **item,
+            "freshness_score": round(freshness, 4),  # 동적 계산값으로 override
             "rerank_score": round(score, 4),
             "_debug": {
                 "relevance":   round(relevance, 4),

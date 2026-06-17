@@ -45,8 +45,9 @@ class PatentIndexer:
         """A가 분해한 claim_limitations.normalized_text → embedding (시그니처 검색 단위)."""
         total = 0
         for batch in self._fetch_unembedded("claim_limitations", "limitation_id", "normalized_text", batch_size):
-            for row in batch:
-                embedding = self.embedder.embed(row["normalized_text"])
+            texts = [row["normalized_text"] for row in batch]
+            embeddings = self.embedder.embed_batch(texts, batch_size=batch_size)
+            for row, embedding in zip(batch, embeddings):
                 self._update_embedding("claim_limitations", "limitation_id", row["limitation_id"], embedding)
                 total += 1
             self.conn.commit()

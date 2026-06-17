@@ -42,8 +42,19 @@ def vector_search(technical_elements: list[str], k: int = 10) -> list[OverlapCan
     query = " ".join(technical_elements)
     plan_technical_element = technical_elements[0] if technical_elements else ""
 
-    raw = _searcher.search_claim_limitations(query=query, top_k=k * 2)
-    ranked = _reranker.rerank(raw, prefer_contradicting=False, top_k=k)
+    raw = _searcher.search_claim_limitations(query=query, top_k=k * 3)
+    ranked = _reranker.rerank(raw, prefer_contradicting=False, top_k=k * 3)
+
+    # 특허(patent_id) 단위 dedup — 같은 특허의 limitation 중 rerank_score 최상위 1개만 유지
+    seen_patents: set[str] = set()
+    deduped = []
+    for item in ranked:
+        pid = item.get("patent_id")
+        if pid not in seen_patents:
+            seen_patents.add(pid)
+            deduped.append(item)
+        if len(deduped) >= k:
+            break
 
     return [
         OverlapCandidate(
@@ -54,5 +65,5 @@ def vector_search(technical_elements: list[str], k: int = 10) -> list[OverlapCan
             hybrid_score=float(item["hybrid_score"]),
             rank=rank,
         )
-        for rank, item in enumerate(ranked, start=1)
+        for rank, item in enumerate(deduped, start=1)
     ]
