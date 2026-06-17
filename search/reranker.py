@@ -66,7 +66,7 @@ class ReRanker:
             import datetime
             try:
                 years_ago = datetime.date.today().year - int(filing_date_str[:4])
-                freshness = max(0.0, 1.0 - years_ago / 10.0)
+                freshness = max(0.0, 1.0 - years_ago / 20.0)
             except (ValueError, TypeError):
                 pass
         freshness = float(freshness) if freshness is not None else 0.5
