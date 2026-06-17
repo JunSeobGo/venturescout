@@ -34,34 +34,43 @@ class PatentIndexer:
 
     # ── 메인 파이프라인 ──────────────────────────────────────────────────────
 
-    def run(self, batch_size: int = 64) -> dict:
-        """claim_limitations + documents 임베딩 적재 (이미 채워진 행은 건너뜀, 재실행 안전)."""
-        return {
+    def run(self, batch_size: int = 256) -> dict:
+        """claim_limitations + documents 임베딩 적재 (이미 채워진 행은 건너뜀, 재실행 안전).
+
+        HNSW 인덱스를 임베딩 전 삭제하고 완료 후 재생성한다.
+        인덱스를 유지한 채 bulk UPDATE하면 매 행마다 HNSW가 갱신되어 ~5x 느려짐.
+        """
+        self._drop_hnsw_indexes()
+        result = {
             "claim_limitations": self.run_claim_limitations(batch_size),
             "documents": self.run_documents(batch_size),
         }
+        self._rebuild_hnsw_indexes()
+        return result
 
-    def run_claim_limitations(self, batch_size: int = 64) -> dict:
+    def run_claim_limitations(self, batch_size: int = 256) -> dict:
         """A가 분해한 claim_limitations.normalized_text → embedding (시그니처 검색 단위)."""
         total = 0
         for batch in self._fetch_unembedded("claim_limitations", "limitation_id", "normalized_text", batch_size):
             texts = [row["normalized_text"] for row in batch]
             embeddings = self.embedder.embed_batch(texts, batch_size=batch_size)
-            for row, embedding in zip(batch, embeddings):
-                self._update_embedding("claim_limitations", "limitation_id", row["limitation_id"], embedding)
-                total += 1
+            pairs = [(emb.tolist(), row["limitation_id"]) for row, emb in zip(batch, embeddings)]
+            self._update_embedding_batch("claim_limitations", "limitation_id", pairs)
+            total += len(pairs)
             self.conn.commit()
             logger.info(f"[claim_limitations] indexed {total} so far...")
         return {"indexed": total}
 
-    def run_documents(self, batch_size: int = 64) -> dict:
+    def run_documents(self, batch_size: int = 256) -> dict:
         """A가 적재한 documents.clean_text → embedding (evidence 검색 단위)."""
         total = 0
         for batch in self._fetch_unembedded("documents", "document_id", "clean_text", batch_size):
+            pairs = []
             for row in batch:
                 embedding = self.embedder.embed(row["clean_text"])
-                self._update_embedding("documents", "document_id", row["document_id"], embedding)
+                pairs.append((embedding.tolist(), row["document_id"]))
                 total += 1
+            self._update_embedding_batch("documents", "document_id", pairs)
             self.conn.commit()
             logger.info(f"[documents] indexed {total} so far...")
         return {"indexed": total}
@@ -101,6 +110,36 @@ class PatentIndexer:
 
         return result
 
+    # ── HNSW 인덱스 관리 ──────────────────────────────────────────────────────
+
+    def _drop_hnsw_indexes(self) -> None:
+        """bulk 임베딩 전 HNSW 인덱스 삭제. 인덱스 없으면 무시."""
+        with self.conn.cursor() as cur:
+            cur.execute("DROP INDEX IF EXISTS idx_claim_limitations_embedding")
+            cur.execute("DROP INDEX IF EXISTS idx_documents_embedding")
+        self.conn.commit()
+        logger.info("[HNSW] 인덱스 삭제 완료 — bulk UPDATE 모드")
+
+    def _rebuild_hnsw_indexes(self) -> None:
+        """임베딩 완료 후 HNSW 인덱스 재생성 (m=16, ef_construction=64)."""
+        logger.info("[HNSW] 인덱스 재생성 중... (수 분 소요)")
+        with self.conn.cursor() as cur:
+            cur.execute("SET statement_timeout = 0")
+            cur.execute("""
+                CREATE INDEX IF NOT EXISTS idx_claim_limitations_embedding
+                ON claim_limitations
+                USING hnsw (embedding vector_cosine_ops)
+                WITH (m = 16, ef_construction = 64)
+            """)
+            cur.execute("""
+                CREATE INDEX IF NOT EXISTS idx_documents_embedding
+                ON documents
+                USING hnsw (embedding vector_cosine_ops)
+                WITH (m = 16, ef_construction = 64)
+            """)
+        self.conn.commit()
+        logger.info("[HNSW] 인덱스 재생성 완료")
+
     # ── 내부 헬퍼 ────────────────────────────────────────────────────────────
 
     def _fetch_unembedded(
@@ -122,9 +161,12 @@ class PatentIndexer:
                     break
                 yield [dict(r) for r in rows]
 
-    def _update_embedding(self, table: str, id_col: str, row_id, embedding) -> None:
+    def _update_embedding_batch(self, table: str, id_col: str, pairs: list[tuple]) -> None:
+        """(embedding_list, row_id) 쌍을 execute_batch로 한 번에 UPDATE."""
         with self.conn.cursor() as cur:
-            cur.execute(
+            psycopg2.extras.execute_batch(
+                cur,
                 f"UPDATE {table} SET embedding = %s WHERE {id_col} = %s",
-                (embedding.tolist(), row_id),
+                pairs,
+                page_size=256,
             )
