@@ -139,25 +139,25 @@ def save_seed_to_db(rows, batch_size=50):
                     skip += 1
                     continue
 
+                meta = row.get('meta')
                 new_rows.append((
-                    str(uuid.uuid4()),           # document_id
-                    None,                         # plan_file_id (seed는 특정 계획서와 무관)
-                    row.get('source_type'),       # source_type
-                    row.get('_document_kind'),    # document_kind
-                    row.get('title', '(제목 없음)'),   # title
-                    row.get('_canonical_url'),    # canonical_url ← meta.source에서 추출
-                    row['_clean_text'],           # clean_text ← 원본 + meta 구조화 텍스트
-                    0.6,                          # reliability_score
-                    0.7,                          # freshness_score
-                    False                         # is_user_provided
+                    str(uuid.uuid4()),                    # document_id
+                    row.get('source_type'),               # source_type
+                    row.get('ext_id'),                    # ext_id
+                    row.get('title', '(제목 없음)'),       # title
+                    row.get('_canonical_url'),             # canonical_url ← meta.source
+                    row['_clean_text'],                    # clean_text ← 원본 + meta 텍스트
+                    json.dumps(meta, ensure_ascii=False) if meta else None,  # meta (jsonb)
+                    0.6,                                   # reliability_score
+                    0.7,                                   # freshness_score
+                    False                                  # is_user_provided
                 ))
 
             if new_rows:
                 execute_values(cursor, """
                     INSERT INTO documents (
-                        document_id, plan_file_id,
-                        source_type, document_kind,
-                        title, canonical_url, clean_text,
+                        document_id, source_type, ext_id,
+                        title, canonical_url, clean_text, meta,
                         reliability_score, freshness_score,
                         is_user_provided
                     )
