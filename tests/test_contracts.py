@@ -1,5 +1,5 @@
 """계약 스키마 검증 — Day 1부터 green 유지."""
-from shared.contracts import AgentFinding, EvidenceItem
+from shared.contracts import AgentFinding, AgentRun, EvidenceItem, IPOverlapCandidate
 
 
 def test_agent_finding_requires_grounding():
@@ -14,3 +14,25 @@ def test_evidence_stance_enum():
                      source_type="seed_review", evidence_text="...",
                      stance="contradicts", reliability_score=0.6)
     assert e.stance == "contradicts"
+    assert e.job_id == ""                       # optional, 기본값 빈 문자열
+    assert e.relevance_score == 0.0             # optional, 기본값 0.0
+
+
+def test_agent_run_grounded_on():
+    """C팀 에이전트가 사용하는 AgentRun 계약 검증."""
+    r = AgentRun(
+        job_id="job_001", agent_name="market", depth="full", confidence="mid",
+        grounded_on=["ev_0412"],
+    )
+    assert r.grounded_on == ["ev_0412"]
+    assert r.output_json == {}
+
+
+def test_ip_overlap_candidate():
+    c = IPOverlapCandidate(
+        candidate_id="c1", job_id="job_001", hypothesis_id="H5",
+        limitation_id="lim_1", evidence_id="ev_1",
+        plan_technical_element="STT", lexical_score=0.3,
+        similarity_score=0.8, hybrid_score=0.7, rank=1,
+    )
+    assert c.hybrid_score == 0.7
