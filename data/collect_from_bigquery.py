@@ -1,3 +1,6 @@
+'''Bigquery -> s3 저장'''
+
+# 모듈 가져오기
 from google.cloud import bigquery
 import boto3
 import json
@@ -5,15 +8,18 @@ from datetime import datetime
 from dotenv import load_dotenv
 import os
 
+# 환경변수 로드
 load_dotenv()
 
+# s3 클라이언트 함수
 def connect_s3():
     return boto3.client('s3',
         region_name=os.getenv('AWS_REGION')
     )
 
-def fetch_and_backup(limit=10):
-    """BigQuery → S3 (한 번만 실행)"""
+
+def fetch_and_backup():
+    """BigQuery → S3"""
     client = bigquery.Client()
 
     query = f"""
@@ -38,10 +44,9 @@ def fetch_and_backup(limit=10):
     AND pub.country_code = 'US'
     AND pub.filing_date >= 20250101
     AND pub.filing_date <= 20260611
-    LIMIT {limit}
     """
 
-    print(f"BigQuery 쿼리 실행 중... (최대 {limit}건)")
+    print(f"BigQuery 쿼리 실행 중...")
     rows = [dict(row) for row in client.query(query).result()]
     print(f"✅ {len(rows)}건 가져옴")
 
@@ -53,13 +58,13 @@ def fetch_and_backup(limit=10):
     s3.put_object(
         Bucket=os.getenv('S3_BUCKET_NAME'),
         Key=filename,
-        Body=json.dumps(rows, default=str,
+        Body=json.dumps(rows, default=str, # 날짜 객체 문자열로 처리할 수 있게 안전장치
                         ensure_ascii=False).encode('utf-8'),
         ContentType='application/json'
     )
     print(f"✅ S3 저장 완료: {filename}")
-    print(f"→ 이 파일명을 load_from_s3.py에서 사용하세요")
+
     return filename
 
 if __name__ == "__main__":
-    fetch_and_backup(limit=10)
+    fetch_and_backup()
