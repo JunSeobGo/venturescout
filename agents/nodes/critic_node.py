@@ -154,21 +154,60 @@ def critic_node(state: VentureScoutState) -> VentureScoutState:
     # ------------------------------------------------------------------
     # 최종 의사결정
     #
-    # 현재 Mock 시나리오 기준:
-    # 기술 구현은 가능
-    # 특허 리스크 존재
-    # 경쟁 차별화 필요
-    #
-    # => Pivot
+    # 특정 아이디어에 고정하지 않고 근거·신뢰도·IP 신호로 판단
     # ------------------------------------------------------------------
 
-    decision = "pivot"
-
-    decision_reason = (
-        "현재 mock 근거 기준으로는 기술 구현 가능성은 있으나, "
-        "범용 회의록 자동화는 IP 중첩 신호와 경쟁 리스크가 있어 "
-        "산업 특화 workflow 방향으로 피벗 검토가 타당하다."
+    low_confidence_count = sum(
+        1
+        for r in results
+        if r.get("confidence") == "low"
     )
+    high_ip_signal = any(
+        r.get("agent_name") == "ip"
+        and (r.get("output_json") or {}).get("overlap_signal") == "high"
+        for r in results
+    )
+
+    if not results or objections or low_confidence_count >= 3:
+        decision = "more_research"
+        confidence = "low"
+        decision_reason = (
+            "근거가 누락됐거나 low confidence 결과가 많아 "
+            "추가 검증이 필요하다."
+        )
+    elif high_ip_signal:
+        decision = "pivot"
+        confidence = "mid"
+        decision_reason = (
+            "높은 IP 중첩 감시 신호가 있어 회피 설계 또는 "
+            "구현 범위 조정이 필요하다."
+        )
+    elif overclaim_points:
+        decision = "more_research"
+        confidence = "low"
+        decision_reason = (
+            "근거보다 강한 표현이 포함되어 결론 전에 재검증이 필요하다."
+        )
+    elif low_confidence_count <= 1:
+        decision = "go"
+        confidence = "mid"
+        decision_reason = (
+            "근거 연결이 확보되고 low confidence 결과가 제한적이어서 "
+            "다음 검증 단계로 진행할 수 있다."
+        )
+    else:
+        decision = "pivot"
+        confidence = "mid"
+        decision_reason = (
+            "근거는 연결됐지만 불확실성이 남아 있어 "
+            "범위를 줄여 검증하는 것이 타당하다."
+        )
+
+    next_experiments = [
+        "low confidence 가설의 추가 근거 수집",
+        "핵심 가설별 go/no-go 기준 측정",
+        "상위 IP 후보 독립항 수동 검토",
+    ]
 
     # ------------------------------------------------------------------
     # Critic 결과 생성
@@ -183,7 +222,7 @@ def critic_node(state: VentureScoutState) -> VentureScoutState:
 
         "depth": "full",
 
-        "confidence": "mid",
+        "confidence": confidence,
 
         # 모든 Agent가 사용한 Evidence
         "grounded_on":
@@ -195,8 +234,8 @@ def critic_node(state: VentureScoutState) -> VentureScoutState:
 
         # 핵심 발견사항
         "key_findings": [
-            "Tech 결과는 구현 가능성보다 비용/지연 검증 필요성을 강조한다.",
-            "IP 결과는 법적 판단이 아니라 청구항 중첩 신호로 제한되어야 한다.",
+            f"분석 결과 {len(results)}개를 검토했다.",
+            f"low confidence 결과는 {low_confidence_count}개다.",
         ],
 
         # 발견된 문제점
@@ -206,14 +245,12 @@ def critic_node(state: VentureScoutState) -> VentureScoutState:
             + missing_evidence,
 
         # 추천 액션
-        "recommendations": [
-            "산업군 1개를 정해 vertical workflow로 좁히기",
-            "30분 회의 샘플 기준 처리 비용 측정",
-            "상위 유사 특허 독립항 5건 수동 검토",
-        ],
+        "recommendations":
+            next_experiments,
 
         # 추가 연구 필요
-        "needs_more_research": True,
+        "needs_more_research":
+            decision == "more_research",
 
         # 상세 결과
         "output_json": {
@@ -239,11 +276,8 @@ def critic_node(state: VentureScoutState) -> VentureScoutState:
                 missing_evidence,
 
             # 다음 실험
-            "next_experiments": [
-                "타깃 고객 10명 인터뷰",
-                "회의 후 업무 추적 MVP 제작",
-                "상위 유사 특허 독립항 수동 검토",
-            ],
+            "next_experiments":
+                next_experiments,
         },
     }
 

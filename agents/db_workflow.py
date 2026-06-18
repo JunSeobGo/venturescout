@@ -147,6 +147,73 @@ def create_hypotheses(
     return hypothesis_ids
 
 
+def get_hypothesis_id_by_code(*, job_id: str, code: str) -> str:
+    """job_id와 H1~H5 code로 실제 hypotheses.hypothesis_id를 찾는다."""
+
+    with db_cursor() as cur:
+        cur.execute(
+            """
+            SELECT hypothesis_id::text AS hypothesis_id
+            FROM public.hypotheses
+            WHERE job_id = %s
+              AND code = %s
+            ORDER BY created_at DESC NULLS LAST
+            LIMIT 1
+            """,
+            (job_id, code),
+        )
+        row = cur.fetchone()
+        if not row:
+            raise RuntimeError(f"hypothesis를 찾을 수 없습니다: job_id={job_id}, code={code}")
+        return row["hypothesis_id"]
+
+
+def create_evidence_item(
+    *,
+    job_id: str,
+    hypothesis_id: str,
+    document: dict[str, Any],
+    stance: str = "neutral",
+) -> dict[str, Any]:
+    """검색된 document 후보를 evidence_items row로 저장한다."""
+
+    distance = float(document.get("distance", 1.0))
+    relevance_score = max(0.0, min(1.0, 1.0 - distance))
+    evidence_text = (
+        document.get("clean_text_preview")
+        or document.get("clean_text")
+        or document.get("title")
+        or "검색된 문서 후보"
+    )
+    reliability_score = document.get("reliability_score")
+    if reliability_score is None:
+        reliability_score = 0.95 if document.get("source_type") == "patent" else 0.60
+
+    payload = {
+        "job_id": job_id,
+        "hypothesis_id": hypothesis_id,
+        "document_id": document["document_id"],
+        "source_type": document.get("source_type"),
+        "evidence_text": evidence_text,
+        "stance": stance,
+        "relevance_score": round(relevance_score, 4),
+        "reliability_score": reliability_score,
+    }
+    evidence_id = insert_row(
+        "evidence_items",
+        payload,
+        returning="evidence_id",
+        required={"job_id", "hypothesis_id", "document_id", "evidence_text"},
+    )
+    return {
+        **payload,
+        "evidence_id": evidence_id,
+        "distance": distance,
+        "title": document.get("title"),
+        "ext_id": document.get("ext_id"),
+    }
+
+
 def search_evidence_for_hypothesis(
     *,
     job_id: str,
@@ -154,13 +221,19 @@ def search_evidence_for_hypothesis(
     query_text: str,
     top_k: int = 5,
 ) -> list[dict[str, Any]]:
-    """documents에서 후보 문서를 검색한다. evidence_items INSERT는 다음 단계에서 확정한다."""
+    """documents에서 후보 문서를 검색하고 evidence_items에 저장한다."""
 
     results = search_documents_by_vector(query_text, top_k=top_k)
-    for item in results:
-        item["job_id"] = job_id
-        item["hypothesis_id"] = hypothesis_id
-    return results
+    evidence_items = [
+        create_evidence_item(
+            job_id=job_id,
+            hypothesis_id=hypothesis_id,
+            document=item,
+            stance="neutral",
+        )
+        for item in results
+    ]
+    return evidence_items
 
 
 def log_agent_run(
@@ -195,6 +268,42 @@ def log_agent_run(
         returning="agent_run_id",
         required={"job_id", "agent_name", "grounded_on", "output_json"},
     )
+
+
+def update_analysis_job(
+    *,
+    job_id: str,
+    status: str,
+    current_stage: str,
+    progress_pct: int,
+    decision: str | None = None,
+    decision_summary: str | None = None,
+) -> None:
+    """analysis_jobs 진행 상태와 최종 결정을 업데이트한다."""
+
+    payload = {
+        "status": status,
+        "current_stage": current_stage,
+        "progress_pct": progress_pct,
+        "decision": decision,
+        "decision_summary": decision_summary,
+    }
+    columns = get_table_columns("analysis_jobs")
+    filtered = {
+        key: value
+        for key, value in payload.items()
+        if key in columns and value is not None
+    }
+    if not filtered:
+        return
+
+    set_sql = ", ".join(f'"{key}" = %s' for key in filtered)
+    values = list(filtered.values()) + [job_id]
+    with db_cursor(commit=True) as cur:
+        cur.execute(
+            f'UPDATE public.analysis_jobs SET {set_sql} WHERE job_id = %s',
+            values,
+        )
 
 
 def run_analysis_workflow(raw_input: str) -> dict[str, Any]:
@@ -267,18 +376,18 @@ def run_analysis_workflow(raw_input: str) -> dict[str, Any]:
             {
                 "hypothesis_id": hypothesis_id,
                 "query": hypothesis["statement"],
-                "documents": docs,
+                "evidence_items": docs,
             }
         )
         log_agent_run(
             job_id=job_id,
             agent_name=agent_name_by_code[hypothesis["code"]],
             hypothesis_id=hypothesis_id,
-            grounded_on=[],
+            grounded_on=[item["evidence_id"] for item in docs],
             output_json={
                 "summary": "LLM 호출 전 skeleton run입니다.",
                 "skeleton": True,
-                "document_candidates": docs,
+                "evidence_items": docs,
             },
             confidence="low",
             depth="light" if hypothesis["code"] in {"H2", "H3", "H4"} else "full",

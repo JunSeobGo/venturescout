@@ -6,6 +6,7 @@ AWS 인증 정보와 Bedrock 모델 접근 권한이 준비되어 있어야 한�
 
 from __future__ import annotations
 
+import json
 import os
 import sys
 
@@ -13,7 +14,8 @@ PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
-os.environ.setdefault("AGENT_LLM_PROVIDER", "bedrock")
+# 이 실행 파일의 목적은 Bedrock 호출이므로 기존 shell 값과 관계없이 명시적으로 켠다.
+os.environ["AGENT_LLM_PROVIDER"] = "bedrock"
 
 from agents.graph import build_graph
 from agents.mock_data import MOCK_JOB_ID, MOCK_IDEA_ID, MOCK_RAW_INPUT
@@ -35,4 +37,4 @@ critic = result.get("critic")
 print("Model:", result["agent_runs"][-1].model_name)
 print("Decision:", critic.decision if critic else None)
 print("Final Report:")
-print(critic.summary if critic else result.get("final_report"))
+print(json.dumps(result.get("final_report"), ensure_ascii=False, indent=2))

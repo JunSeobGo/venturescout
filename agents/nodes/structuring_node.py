@@ -12,8 +12,8 @@ agents/nodes/structuring_node.py
 5. 특허 검색 키워드 생성
 6. 검증할 가설(Hypothesis) 생성
 
-현재는 Mock 버전으로 고정 데이터를 입력하지만,
-실서비스에서는 LLM(Claude/GPT)이 해당 작업을 수행한다.
+실서비스에서는 LLM(Claude)이 해당 작업을 수행하고,
+호출할 수 없을 때는 원문에 명시된 필드만 보수적으로 추출한다.
 
 흐름:
 
@@ -30,6 +30,7 @@ hypotheses
 후속 Agent 전달
 """
 
+from agents.nodes.runtime_inputs import structure_raw_input
 from agents.state import VentureScoutState
 
 
@@ -44,57 +45,50 @@ def structuring_node(state: VentureScoutState) -> VentureScoutState:
         구조화된 사업 아이디어 정보
         + 초기 가설 목록
 
-    현재는 Mock 데이터 사용
+    기존 State와 가설의 키 구조를 유지한다.
     """
 
     # 사용자 원본 입력
-    raw = state["raw_input"]
+    raw = str(state["raw_input"]).strip()
+    if not raw:
+        raise ValueError("structuring_node에는 비어 있지 않은 raw_input이 필요합니다.")
 
     # ------------------------------------------------------------------
     # 아이디어 기본 정보 추출
-    # 실제 구현에서는 LLM이 추출
+    # Claude 결과를 우선하고 실패 시 원문에 명시된 필드만 사용
     # ------------------------------------------------------------------
 
-    state["title"] = "AI 회의록 자동화 SaaS"
+    structured = structure_raw_input(raw)
 
-    state["idea_type"] = "ai_saas"
+    state["title"] = structured["title"]
 
-    state["target_customer"] = "회의가 많은 B2B 조직"
+    state["idea_type"] = structured["idea_type"]
 
-    state["problem_statement"] = (
-        "회의 후 정리와 후속 업무 추적이 번거롭다."
-    )
+    state["target_customer"] = structured["target_customer"]
 
-    state["solution_summary"] = (
-        "AI가 회의 내용을 요약하고 액션아이템을 자동 생성한다."
-    )
+    state["problem_statement"] = structured["problem_statement"]
 
-    state["business_model_hint"] = (
-        "팀 단위 월 구독형 SaaS"
-    )
+    state["solution_summary"] = structured["solution_summary"]
+
+    state["business_model_hint"] = structured["business_model_hint"]
 
     # ------------------------------------------------------------------
     # 핵심 기술 요소
     # 이후 Tech Agent, IP Agent가 활용
     # ------------------------------------------------------------------
 
-    state["technical_elements"] = [
-        "speech-to-text",          # 음성 → 텍스트 변환
-        "meeting summarization",   # 회의 요약
-        "action item extraction",  # 액션아이템 추출
-        "workflow integration",    # Slack/Notion 연동
-    ]
+    state["technical_elements"] = list(
+        structured["technical_elements"]
+    )
 
     # ------------------------------------------------------------------
     # 특허 검색용 키워드
     # 이후 Patent Search Agent 활용
     # ------------------------------------------------------------------
 
-    state["patent_keywords"] = [
-        "meeting transcription",
-        "automatic summarization",
-        "action item generation",
-    ]
+    state["patent_keywords"] = list(
+        structured["patent_keywords"]
+    )
 
     # ------------------------------------------------------------------
     # 초기 가설 생성
@@ -103,6 +97,15 @@ def structuring_node(state: VentureScoutState) -> VentureScoutState:
     # "아이디어 평가"가 아니라
     # "가설 검증" 방식으로 동작
     # ------------------------------------------------------------------
+
+    problem = (
+        structured["problem_statement"]
+        or "타깃 고객의 핵심 문제"
+    )
+    technical_elements = (
+        ", ".join(structured["technical_elements"])
+        or "핵심 기술요소"
+    )
 
     state["hypotheses"] = [
 
@@ -117,7 +120,7 @@ def structuring_node(state: VentureScoutState) -> VentureScoutState:
             "axis": "고객문제",
 
             "statement":
-                "타깃 고객은 회의 후 정리 문제를 반복적으로 겪는다.",
+                f"타깃 고객은 '{problem}'를 반복적으로 겪는다.",
 
             "confidence": "low",
 
@@ -140,12 +143,12 @@ def structuring_node(state: VentureScoutState) -> VentureScoutState:
             "axis": "기술",
 
             "statement":
-                "핵심 기능은 현재 기술로 프로토타입 구현 가능하다.",
+                f"'{technical_elements}'는 현재 기술로 프로토타입 구현 가능하다.",
 
             "confidence": "low",
 
             "next_validation":
-                "30분 회의 10건 기준 처리 시간과 비용 측정",
+                "대표 입력 기준 처리 품질·시간·비용 측정",
 
             "supporting_evidence": [],
 

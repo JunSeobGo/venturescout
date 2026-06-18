@@ -13,38 +13,15 @@ IP(Intellectual Property) / 특허 리스크 분석 노드.
 
 중요:
 이 노드는 법적 침해 여부를 판단하지 않는다.
-
-목적은
-"현재 아이디어가 기존 특허와 얼마나 유사한가?"
-를 사전에 탐지하는 것이다.
-
-검증 대상 가설:
-
-H5:
-"기존 청구항과 직접 중첩하지 않는 구현 경로가 있다."
-
-흐름:
-
-H5
- ↓
-특허 후보 검색
- ↓
-Claim 유사도 분석
- ↓
-중복 위험 요소 식별
- ↓
-Design-Around 생성
- ↓
-Grounding 검증
- ↓
-IP 결과 저장
 """
 
-from agents.state import VentureScoutState
-from agents.mock_repository import MockRepository
 from agents.grounding import validate_grounded_output
+from agents.mock_repository import MockRepository
+from agents.nodes.runtime_inputs import state_ip_candidates
+from agents.state import VentureScoutState
 
-# 테스트용 Repository
+
+# 상세 노드 단독 테스트를 위한 fallback Repository
 repo = MockRepository()
 
 
@@ -58,26 +35,27 @@ def ip_node(state: VentureScoutState) -> VentureScoutState:
     출력:
         state["ip_result"]
 
-    주요 평가 항목:
-    - 특허 중복 가능성
-    - Claim Limitation 유사도
-    - 기술 요소별 위험도
-    - Design Around 전략
+    기존 ip_result와 output_json의 키 구조를 유지한다.
     """
 
     # ------------------------------------------------------------------
     # H5 관련 특허 후보 조회
+    # 실제 State 데이터를 우선하고 없으면 mock fallback 사용
     # ------------------------------------------------------------------
 
-    candidates = repo.get_ip_overlap_candidates(
-        state["job_id"],
-        "H5"
+    candidates = state_ip_candidates(
+        state,
+        repo.get_ip_overlap_candidates(
+            state["job_id"],
+            "H5"
+        ),
     )
 
     # Grounding 검증용 Evidence ID
     evidence_ids = [
-        c["evidence_id"]
+        str(c["evidence_id"])
         for c in candidates
+        if c.get("evidence_id")
     ]
 
     # 중첩 위험 기술 요소
@@ -88,42 +66,59 @@ def ip_node(state: VentureScoutState) -> VentureScoutState:
 
     # ------------------------------------------------------------------
     # 특허 중복 위험 분석
-    #
-    # hybrid_score:
-    # 키워드 + 임베딩 유사도를 합친 최종 점수
     # ------------------------------------------------------------------
 
-    for c in candidates:
+    for candidate in candidates:
 
-        # 위험도 임계값
-        if c["hybrid_score"] >= 0.78:
+        if float(candidate.get("hybrid_score") or 0.0) >= 0.78:
 
-            high_overlap_elements.append(
-                c["plan_technical_element"]
-            )
+            element = candidate.get("plan_technical_element")
+            if element and element not in high_overlap_elements:
+                high_overlap_elements.append(str(element))
 
     # ------------------------------------------------------------------
     # Design Around 전략 생성
-    #
-    # 기존 특허와 직접 충돌하지 않도록
-    # 제품 방향을 조정하는 방법
+    # 특정 제품 도메인이 아니라 검색된 기술요소를 기준으로 생성
     # ------------------------------------------------------------------
 
-    if "meeting summarization" in high_overlap_elements:
+    for element in high_overlap_elements:
 
         design_around_options.append(
-            "범용 회의 요약보다 산업별 회의 양식 자동 변환으로 좁히기"
+            f"'{element}'의 처리 단계·입출력·구현 순서를 후보 청구항과 "
+            "다르게 구성할 수 있는지 검토"
         )
 
-    if "action item extraction" in high_overlap_elements:
-
-        design_around_options.append(
-            "액션아이템 생성보다 후속 업무 추적 워크플로우에 집중하기"
+    if high_overlap_elements:
+        overlap_signal = "high"
+        summary = (
+            f"고위험 감시 기술요소 {len(high_overlap_elements)}개에서 청구항 "
+            "limitation 중첩 신호가 있다. 이는 법적 침해 판단이 아니라 "
+            "수동 검토가 필요한 사전 리스크 신호다."
         )
+    elif candidates:
+        overlap_signal = "low"
+        summary = (
+            "현재 후보에서는 강한 중첩 신호가 확인되지 않았다. 검색 누락 가능성이 "
+            "있으므로 법적으로 안전하다는 의미는 아니다."
+        )
+    else:
+        overlap_signal = "unknown"
+        summary = (
+            "IP 중첩 후보가 없어 현재 판단할 수 없다. claim limitation 검색 결과를 "
+            "먼저 수집해야 한다."
+        )
+
+    key_findings = [
+        (
+            f"{candidate.get('plan_technical_element', '기술요소')}: "
+            f"hybrid_score={float(candidate.get('hybrid_score') or 0.0):.4f}"
+        )
+        for candidate in candidates[:5]
+    ]
 
     # ------------------------------------------------------------------
     # IP Agent 결과 생성
-    # 실제 서비스에서는 LLM + Patent Search 활용
+    # 기존 필드 구조는 바꾸지 않고 값만 실제 후보 기반으로 생성
     # ------------------------------------------------------------------
 
     output = {
@@ -138,34 +133,31 @@ def ip_node(state: VentureScoutState) -> VentureScoutState:
         "depth": "full",
 
         # 현재 신뢰도
-        "confidence": "mid",
+        "confidence": (
+            "mid"
+            if candidates
+            else "low"
+        ),
 
         # 사용한 Evidence
         "grounded_on": evidence_ids,
 
         # 분석 요약
-        "summary": (
-            "일부 기술요소는 USPTO 청구항 limitation과 "
-            "중첩 신호가 있다. "
-            "단, 이는 법적 침해 판단이 아니라 "
-            "기술 구성요소 기반의 사전 리스크 신호다."
-        ),
+        "summary": summary,
 
         # 핵심 발견사항
-        "key_findings": [
-            "meeting summarization 요소는 일부 청구항 limitation과 유사하다.",
-            "action item extraction 요소도 관련 limitation 후보가 있다.",
-        ],
+        "key_findings": key_findings,
 
         # 발견된 리스크
         "risks": [
-            "범용 회의 요약 기능 중심 진입은 IP 중첩 신호가 있을 수 있다.",
+            "유사도 점수는 법적 침해 판단을 대신할 수 없다.",
+            "독립항과 각 limitation 충족 여부를 별도로 검토해야 한다.",
         ],
 
         # 권장 액션
         "recommendations": [
-            "상위 유사 특허 독립항 5건 수동 검토",
-            "산업별 workflow automation으로 design-around 검토",
+            "상위 유사 특허 독립항 수동 검토",
+            "고위험 기술요소별 design-around 검토",
         ],
 
         # 추가 조사 필요
@@ -175,7 +167,7 @@ def ip_node(state: VentureScoutState) -> VentureScoutState:
         "output_json": {
 
             # 특허 중복 위험 신호
-            "overlap_signal": "mid",
+            "overlap_signal": overlap_signal,
 
             # 위험 요소
             "high_overlap_elements":
@@ -197,10 +189,6 @@ def ip_node(state: VentureScoutState) -> VentureScoutState:
 
     # ------------------------------------------------------------------
     # Grounding 검증
-    #
-    # 1. Evidence 참조 검증
-    # 2. grounded_on 검증
-    # 3. 과장 표현 검증
     # ------------------------------------------------------------------
 
     ok, errors = validate_grounded_output(
@@ -208,15 +196,12 @@ def ip_node(state: VentureScoutState) -> VentureScoutState:
         evidence_ids
     )
 
-    # Grounding 품질 점수
     output["groundedness_score"] = (
         1.0 if ok else 0.0
     )
 
-    # 과장/검증 실패 여부
     output["overclaim_flag"] = not ok
 
-    # 검증 오류 목록
     output["validation_errors"] = errors
 
     # ------------------------------------------------------------------
@@ -227,7 +212,6 @@ def ip_node(state: VentureScoutState) -> VentureScoutState:
 
     # ------------------------------------------------------------------
     # Agent 실행 결과 저장
-    # 실제 서비스에서는 DB 저장
     # ------------------------------------------------------------------
 
     repo.insert_agent_run(output)

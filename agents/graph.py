@@ -25,6 +25,7 @@ from typing import Any
 
 from langgraph.graph import END, START, StateGraph
 
+from agents.final_report import build_professional_final_report
 from agents.llm import current_model_name, invoke_claude_json, llm_enabled
 from agents.logger import (
     get_logger,
@@ -313,7 +314,7 @@ def structuring_node(state: VentureScoutState) -> dict:
     # Structuring은 전체 그래프의 출발점이다.
     # 여기서 만든 idea와 hypotheses가 뒤쪽 모든 agent의 공통 입력이 된다.
     start_time = time.time()
-    log_stage(logger, "1️⃣", "Structuring (구조화)")
+    log_stage(logger, "1", "Structuring (구조화)")
 
     job_id = state.get("job_id", MOCK_JOB_ID)
     idea_id = state.get("idea_id", MOCK_IDEA_ID)
@@ -359,7 +360,7 @@ def structuring_node(state: VentureScoutState) -> dict:
     if not structuring_quality["ready_for_analysis"]:
         logger.warning(f"구조화 검증 실패: {structuring_quality}")
     else:
-        logger.info(f"✓ 검증 통과: {structuring_quality}")
+        logger.info(f"검증 통과: {structuring_quality}")
 
     analysis_job = AnalysisJob(
         job_id=job_id,
@@ -399,25 +400,39 @@ def market_node(state: VentureScoutState) -> dict:
     # Market은 H1, 즉 "고객 문제가 실제로 반복되는가"를 검증한다.
     # 현재 Track C 핵심 담당은 아니어서 간단한 mock 분석으로 둔다.
     start_time = time.time()
-    log_stage(logger, "2️⃣", "Market (시장/고객 검증)")
+    log_stage(logger, "2", "Market (시장/고객 검증)")
 
     job_id = state["analysis_job"].job_id
+    idea = state["idea"]
     log_input(logger, {"job_id": job_id, "hypothesis": "H1"})
 
-    log_processing(logger, "H1 관련 근거 검색 중...", {"query": "meeting follow-up pain"})
+    query = " ".join(
+        part
+        for part in [
+            idea.target_customer,
+            idea.problem_statement,
+            "customer pain frequency urgency",
+        ]
+        if part
+    )
+    log_processing(logger, "H1 관련 근거 검색 중...", {"query": query})
     # 실제 데이터 전환 지점:
     # retrieve() 내부가 실제 검색으로 바뀌면 이 노드는 별도 수정 없이 실제 H1 evidence를 받는다.
-    evidence = retrieve("H1", "meeting follow-up pain", job_id=job_id)
+    evidence = retrieve("H1", query, job_id=job_id)
     log_processing(logger, "근거 수집 완료", {"evidence_count": len(evidence)})
 
     default_output = {
         # 조정 가능 지점:
         # 현재 Market/Competitor/BM은 일부러 low confidence로 둔다.
         # 고객 인터뷰나 실제 웹 근거가 붙으면 confidence 계산을 evidence_strength 기반으로 바꿀 수 있다.
-        "summary": "Mock market signal exists but needs direct interviews.",
-        "key_findings": ["Evidence is seeded, not user-validated."],
-        "risks": ["Pain intensity and buyer urgency are unproven."],
-        "recommendations": ["Interview 10 target customers."],
+        "summary": "고객 문제 관련 신호는 있으나 실제 고객 행동으로 재검증해야 한다.",
+        "key_findings": [
+            f"현재 근거 {len(evidence)}개가 고객 문제 가설과 연결됐다."
+        ],
+        "risks": ["문제 발생 빈도와 구매 긴급도가 아직 충분히 검증되지 않았다."],
+        "recommendations": [
+            "타깃 고객 인터뷰로 문제 빈도, 현재 해결 비용, 전환 의사를 확인한다."
+        ],
     }
 
     agent_run = _agent_run(
@@ -463,14 +478,28 @@ def competitor_node(state: VentureScoutState) -> dict:
     # 조정 가능 지점:
     # 나중에는 Market/Tech/IP처럼 start_time/log_input/log_output 패턴을 맞추면 추적성이 좋아진다.
     job_id = state["analysis_job"].job_id
+    idea = state["idea"]
     # 실제 데이터 전환 지점:
     # 경쟁사/대안 자료가 documents/evidence_items에 적재되면 retrieve()가 해당 근거를 반환한다.
-    evidence = retrieve("H2", "adjacent meeting tools", job_id=job_id)
+    query = " ".join(
+        part
+        for part in [
+            idea.solution_summary,
+            idea.target_customer,
+            "competitor alternative differentiation pricing",
+        ]
+        if part
+    )
+    evidence = retrieve("H2", query, job_id=job_id)
     default_output = {
-        "summary": "Adjacent tools exist; differentiation is not yet proven.",
-        "key_findings": ["Competition requires workflow-level positioning."],
-        "risks": ["Generic summarization is crowded."],
-        "recommendations": ["Narrow to one vertical workflow."],
+        "summary": "관련 대안 신호는 확인되지만 실제 차별화 수준은 추가 비교가 필요하다.",
+        "key_findings": [
+            f"경쟁·대안 관련 근거 {len(evidence)}개를 확인했다."
+        ],
+        "risks": ["기능 유사성만으로는 고객의 전환 이유가 되지 않을 수 있다."],
+        "recommendations": [
+            "직접·간접 대안의 고객군, 기능, 가격, 전환비용을 비교한다."
+        ],
     }
     return {
         "evidence_items": _evidence_map(evidence),
@@ -501,15 +530,22 @@ def tech_node(state: VentureScoutState) -> dict:
     # Tech는 H4, 즉 "현재 기술로 프로토타입 구현이 가능한가"를 light depth로 검증한다.
     # 법/시장보다 빠르게 판단할 수 있는 비용, 지연시간, 보안, API 의존성을 중심으로 본다.
     start_time = time.time()
-    log_stage(logger, "4️⃣", "Tech (기술 가능성 - Light)")
+    log_stage(logger, "4", "Tech (기술 가능성 - Light)")
 
     job_id = state["analysis_job"].job_id
+    idea = state["idea"]
     log_input(logger, {"job_id": job_id, "hypothesis": "H4"})
 
-    log_processing(logger, "H4 관련 근거 검색 중...", {"query": "STT LLM summarization latency cost"})
+    query = " ".join(
+        [
+            *idea.technical_elements,
+            "technical feasibility latency cost security benchmark",
+        ]
+    )
+    log_processing(logger, "H4 관련 근거 검색 중...", {"query": query})
     # 실제 데이터 전환 지점:
     # 기술 문서, PoC 결과, 벤치마크 로그를 evidence_items로 적재하면 여기서 실제 H4 근거를 받는다.
-    evidence = retrieve("H4", "STT LLM summarization latency cost", job_id=job_id)
+    evidence = retrieve("H4", query, job_id=job_id)
     log_processing(logger, "근거 수집 완료", {"evidence_count": len(evidence)})
 
     log_processing(logger, "증거 분석 중...")
@@ -555,8 +591,8 @@ def tech_node(state: VentureScoutState) -> dict:
                     role="기술 구현 가능성, 비용, 지연시간, 보안 리스크를 light depth로 검토한다.",
                     default_output={
                     "summary": (
-                        "STT와 LLM 조합으로 프로토타입 경로는 열려 있지만, "
-                        "긴 회의에서 지연시간과 단위 비용을 검증해야 한다."
+                        f"핵심 기술요소 {len(idea.technical_elements)}개에 대해 "
+                        "프로토타입의 품질, 지연시간, 단위 비용을 검증해야 한다."
                     ),
                     "feasibility_signal": feasibility_signal,
                     "evidence_strength": strength,
@@ -564,50 +600,40 @@ def tech_node(state: VentureScoutState) -> dict:
                     "supporting_evidence": supporting_ids,
                     "risk_evidence": risk_ids,
                     "architecture_assumption": [
-                        "음성 파일은 STT API로 텍스트화한다.",
-                        "요약과 액션 아이템 추출은 LLM API를 분리 호출한다.",
-                        "Slack/Notion 동기화는 비동기 worker로 처리한다.",
+                        f"핵심 기술요소를 독립적으로 검증한다: {element}"
+                        for element in idea.technical_elements
                     ],
-                    "required_models_or_apis": [
-                        "STT API",
-                        "LLM summarization API",
-                        "LLM action-item extraction prompt",
-                        "Slack/Notion integration API",
-                    ],
+                    "required_models_or_apis": idea.technical_elements,
                     "risk_register": [
                         {
-                            "risk": "긴 회의 처리 지연",
-                            "why_it_matters": "사용자가 회의 직후 결과를 기대하면 UX를 해칠 수 있다.",
-                            "mitigation": "구간별 요약, 비동기 처리, 진행률 표시를 실험한다.",
+                            "risk": "목표 품질 미달",
+                            "why_it_matters": "핵심 결과의 정확도가 낮으면 반복 사용으로 이어지기 어렵다.",
+                            "mitigation": "대표 입력과 정답셋으로 품질 기준선을 측정한다.",
                         },
                         {
-                            "risk": "토큰/전사 비용 증가",
-                            "why_it_matters": "좌석 단위 SaaS 마진을 갉아먹을 수 있다.",
-                            "mitigation": "회의 길이별 원가표와 사용량 제한 정책을 만든다.",
+                            "risk": "처리 비용과 지연 증가",
+                            "why_it_matters": "사용량 증가 시 제품 경험과 단위경제성이 악화될 수 있다.",
+                            "mitigation": "입력 크기별 지연시간과 단위 원가를 측정한다.",
                         },
                         {
-                            "risk": "회의 데이터 보안",
-                            "why_it_matters": "B2B 고객 도입의 핵심 구매 기준이다.",
-                            "mitigation": "저장 최소화, 암호화, tenant 분리를 MVP 요구사항에 포함한다.",
+                            "risk": "사용자 데이터 보안",
+                            "why_it_matters": "신뢰와 도입 심사에 직접 영향을 준다.",
+                            "mitigation": "저장 최소화, 암호화, 접근통제 요구사항을 정의한다.",
                         },
                     ],
                     "validation_plan": [
-                        "30분 회의 10건으로 STT+요약 end-to-end 지연시간 측정",
-                        "회의 1시간당 전사 비용과 LLM 토큰 비용 산출",
-                        "액션 아이템 precision/recall을 수동 라벨 30개로 비교",
+                        "대표 입력 10건으로 end-to-end 품질과 지연시간 측정",
+                        "입력 단위당 API·인프라 비용 산출",
+                        "핵심 결과를 수동 정답셋과 비교",
                     ],
                     "go_no_go_metrics": {
-                        # 조정 가능 지점:
-                        # 이 값들은 제품/고객군에 따라 바뀌는 MVP 통과 기준이다.
-                        # 예: 엔터프라이즈 비동기 리포트라면 p95_latency_minutes를 10~30분으로 완화할 수 있고,
-                        # 실시간 회의 비서라면 1분 이하로 강화해야 한다.
-                        "p95_latency_minutes": "<= 5",
-                        "cost_per_meeting_usd": "<= 0.50",
-                        "action_item_precision": ">= 0.80",
+                        "quality_metric": "도메인별 목표치 확정 필요",
+                        "p95_latency": "사용자 기대시간 이내",
+                        "unit_cost": "목표 gross margin을 충족",
                     },
                     "recommendations": [
-                        "먼저 회의 요약보다 액션 아이템 정확도를 제품 차별화 기준으로 잡는다.",
-                        "비용 검증 전에는 무제한 요금제를 가정하지 않는다.",
+                        "가장 위험한 기술요소부터 독립 PoC로 검증한다.",
+                        "비용 검증 전에는 무제한 사용 정책을 가정하지 않는다.",
                     ],
                     },
                     context={
@@ -628,17 +654,24 @@ def ip_node(state: VentureScoutState) -> dict:
     # 이 노드는 법적 침해 여부를 판단하지 않는다.
     # 역할은 claim chart 수동 검토가 필요한 후보를 우선순위화하는 것이다.
     start_time = time.time()
-    log_stage(logger, "5️⃣", "IP (특허 중첩 분석 - Full)")
+    log_stage(logger, "5", "IP (특허 중첩 분석 - Full)")
 
     job_id = state["analysis_job"].job_id
     idea = state["idea"]
 
     log_input(logger, {"job_id": job_id, "hypothesis": "H5", "technical_elements": len(idea.technical_elements)})
 
-    log_processing(logger, "H5 관련 근거 검색 중...", {"query": "meeting summarization patent limitations"})
+    query = " ".join(
+        [
+            *idea.technical_elements,
+            *idea.patent_keywords,
+            "patent claim limitation",
+        ]
+    )
+    log_processing(logger, "H5 관련 근거 검색 중...", {"query": query})
     # 실제 데이터 전환 지점:
     # 특허 documents/claim_limitations가 적재되면 retrieve()가 실제 H5 근거를 반환한다.
-    evidence = retrieve("H5", "meeting summarization patent limitations", job_id=job_id)
+    evidence = retrieve("H5", query, job_id=job_id)
     log_processing(logger, "근거 수집 완료", {"evidence_count": len(evidence)})
 
     log_processing(logger, "IP 특허 후보 벡터 검색 중...", {"elements": idea.technical_elements})
@@ -724,9 +757,11 @@ def ip_node(state: VentureScoutState) -> dict:
                     "stance_counts": stance_counts,
                     "high_overlap_elements": high_overlap,
                     "design_around_options": [
-                        "범용 회의 요약 대신 특정 직무/산업 workflow 후속 조치로 범위를 좁힌다.",
-                        "요약 생성 자체보다 action item 상태 추적, 담당자 배정, 완료 검증을 핵심 차별점으로 둔다.",
-                        "claim chart에서 speech-to-text, summary generation, task extraction 구성요소를 분리해 검토한다.",
+                        (
+                            f"'{element}'의 필수 단계, 입력, 출력, 처리 순서를 "
+                            "후보 청구항과 다르게 구성할 수 있는지 검토한다."
+                        )
+                        for element in high_overlap
                     ],
                     "claim_review_queue": [
                         {
@@ -744,8 +779,8 @@ def ip_node(state: VentureScoutState) -> dict:
                     ),
                     "manual_review_questions": [
                         "독립항 기준으로 필수 구성요소가 모두 제품 구현에 들어가는가?",
-                        "요약 생성과 action item 추출이 같은 claim family에 묶이는가?",
-                        "workflow-specific 후속 조치 중심으로 claim 요소를 회피할 수 있는가?",
+                        "각 기술요소가 같은 claim family에 결합되어 있는가?",
+                        "선택적 구성 또는 대체 처리 순서로 claim 요소를 회피할 수 있는가?",
                     ],
                     "candidates": candidate_rows,
                     },
@@ -768,14 +803,28 @@ def bm_node(state: VentureScoutState) -> dict:
     # 조정 가능 지점:
     # 가격 인터뷰나 결제 의향 데이터가 들어오면 evidence_strength 기반 confidence로 바꿀 수 있다.
     job_id = state["analysis_job"].job_id
+    idea = state["idea"]
     # 실제 데이터 전환 지점:
     # 가격 인터뷰, 결제 의향, 경쟁 가격 자료를 evidence_items로 적재하면 실제 H3 근거가 들어온다.
-    evidence = retrieve("H3", "per-seat SaaS pricing willingness", job_id=job_id)
+    query = " ".join(
+        part
+        for part in [
+            idea.target_customer,
+            idea.business_model_hint,
+            "pricing willingness budget buyer business model",
+        ]
+        if part
+    )
+    evidence = retrieve("H3", query, job_id=job_id)
     default_output = {
-        "summary": "Per-seat SaaS is plausible but unvalidated.",
-        "key_findings": ["Pricing evidence is only a placeholder."],
-        "risks": ["Buyer willingness and budget owner are unknown."],
-        "recommendations": ["Run pricing interviews."],
+        "summary": "제안된 수익모델은 가능성이 있지만 실제 결제 행동 검증이 필요하다.",
+        "key_findings": [
+            f"가격·수익모델 관련 근거 {len(evidence)}개를 확인했다."
+        ],
+        "risks": ["구매자, 예산 출처, 지불 단위와 수용 가격이 불명확하다."],
+        "recommendations": [
+            "구매자와 사용자별 가격 인터뷰 및 결제 의향 실험을 수행한다."
+        ],
     }
     return {
         "evidence_items": _evidence_map(evidence),
@@ -809,7 +858,7 @@ def critic_node(state: VentureScoutState) -> dict:
     # 다른 agent들이 남긴 AgentRun이 evidence_id에 제대로 grounded 되었는지 검수하는 최종 감사자다.
     # 그래서 decision은 LLM이 마음대로 바꾸지 않고, 아래 코드 규칙으로 먼저 고정한다.
     start_time = time.time()
-    log_stage(logger, "7️⃣", "Critic (최종 종합 판단)")
+    log_stage(logger, "7", "Critic (최종 종합 판단)")
 
     job_id = state["analysis_job"].job_id
     agent_runs = state.get("agent_runs", [])
@@ -847,9 +896,9 @@ def critic_node(state: VentureScoutState) -> dict:
     ]
 
     if missing_evidence:
-        logger.warning(f"⚠️  근거 미연결: {missing_evidence}")
+        logger.warning(f"[WARN] 근거 미연결: {missing_evidence}")
     if invalid_grounding:
-        logger.warning(f"⚠️  잘못된 근거 참조: {invalid_grounding}")
+        logger.warning(f"[WARN] 잘못된 근거 참조: {invalid_grounding}")
 
     log_processing(logger, "신뢰도 분석 중...")
     low_confidence = [
@@ -875,7 +924,7 @@ def critic_node(state: VentureScoutState) -> dict:
     # uncovered_hypotheses가 있으면 어떤 가설은 아무 agent도 검증하지 않은 상태다.
     # 이 경우 최종 결론을 내리기보다 more_research로 돌리는 것이 안전하다.
     if uncovered_hypotheses:
-        logger.warning(f"⚠️  미검증 가설: {uncovered_hypotheses}")
+        logger.warning(f"[WARN] 미검증 가설: {uncovered_hypotheses}")
 
     log_processing(logger, "반박 근거 및 IP 위험 확인 중...")
     contradicting_evidence = [
@@ -893,9 +942,9 @@ def critic_node(state: VentureScoutState) -> dict:
     ]
 
     if contradicting_evidence:
-        logger.warning(f"⚠️  반박 근거: {contradicting_evidence[:3]}...")
+        logger.warning(f"[WARN] 반박 근거: {contradicting_evidence[:3]}...")
     if high_ip_candidates:
-        logger.warning(f"⚠️  IP 위험 신호: {high_ip_candidates}")
+        logger.warning(f"[WARN] IP 위험 신호: {high_ip_candidates}")
 
     scorecard = {
         "agent_run_count": len(agent_runs),
@@ -916,7 +965,7 @@ def critic_node(state: VentureScoutState) -> dict:
         decision = "more_research"
         summary = "근거 연결 또는 가설 커버리지에 빈틈이 있어 추가 검증이 필요하다."
         confidence: Confidence = "low"
-        logger.info("→ 규칙 1: 근거 미연결 또는 가설 미검증 → more_research")
+        logger.info("규칙 1: 근거 미연결 또는 가설 미검증 -> more_research")
     # 조정 가능 지점:
     # 현재는 low confidence agent가 3개 이상이면 more_research다.
     # 팀이 더 공격적으로 MVP를 밀고 싶으면 4개 이상으로 완화할 수 있고,
@@ -925,13 +974,16 @@ def critic_node(state: VentureScoutState) -> dict:
         decision = "more_research"
         summary = "대부분의 핵심 가설이 low confidence라 고객/가격/기술 근거를 더 수집해야 한다."
         confidence = "low"
-        logger.info("→ 규칙 2: 신뢰도 낮은 에이전트 ≥3개 → more_research")
+        logger.info("규칙 2: 신뢰도 낮은 에이전트 >=3개 -> more_research")
     # high IP candidate는 법적 결론이 아니라 "회피 설계나 수동 claim chart가 먼저"라는 신호다.
     elif high_ip_candidates:
         decision = "pivot"
-        summary = "IP 시그니처 후보가 있어 범용 회의 요약보다 vertical workflow 중심으로 좁혀 검증하는 편이 낫다."
+        summary = (
+            "높은 IP 중첩 후보가 있어 현재 구현안을 그대로 확장하기보다 "
+            "회피 설계와 제품 범위 조정을 먼저 검토해야 한다."
+        )
         confidence = "mid"
-        logger.info("→ 규칙 3: 고위험 IP 후보 있음 → pivot")
+        logger.info("규칙 3: 고위험 IP 후보 있음 -> pivot")
     # 조정 가능 지점:
     # go 조건은 현재 꽤 보수적이다.
     # 반박 근거가 없고 low confidence가 1개 이하일 때만 제한적 go를 허용한다.
@@ -940,14 +992,14 @@ def critic_node(state: VentureScoutState) -> dict:
         decision = "go"
         summary = "현재 근거 기준으로 치명적 반박이 적어 제한된 MVP 진행이 가능하다."
         confidence = "mid"
-        logger.info("→ 규칙 4: 반박 근거 없음, 신뢰도 높음 → go")
+        logger.info("규칙 4: 반박 근거 없음, 신뢰도 높음 -> go")
     else:
         decision = "pivot"
         summary = "근거는 있으나 반박 신호가 있어 포지셔닝과 검증 범위를 좁혀야 한다."
         confidence = "mid"
-        logger.info("→ 규칙 5: 반박 신호 있음 → pivot")
+        logger.info("규칙 5: 반박 신호 있음 -> pivot")
 
-    log_processing(logger, f"🎯 최종 판단: {decision.upper()} (신뢰도: {confidence})")
+    log_processing(logger, f"최종 판단: {decision.upper()} (신뢰도: {confidence})")
 
     objections = []
     if low_confidence:
@@ -960,6 +1012,18 @@ def critic_node(state: VentureScoutState) -> dict:
         objections.append(
             f"IP signature candidates require manual review: {', '.join(high_ip_candidates)}"
         )
+
+    experiment_by_code = {
+        "H1": "타깃 고객 인터뷰로 문제 빈도, 현재 해결 비용, 전환 의사를 검증한다.",
+        "H2": "직접·간접 대안의 기능, 가격, 고객군, 전환비용을 비교한다.",
+        "H3": "구매자와 사용자별 가격 인터뷰 또는 결제 의향 실험을 수행한다.",
+        "H4": "대표 입력으로 핵심 기능의 품질, 지연시간, 단위비용을 측정한다.",
+        "H5": "상위 특허 후보의 독립항과 limitation을 수동 claim chart로 검토한다.",
+    }
+    next_experiments = [
+        f"{hypothesis.code}: {experiment_by_code.get(hypothesis.code, hypothesis.next_validation)}"
+        for hypothesis in state.get("hypotheses", [])
+    ]
 
     critic = CriticResult(
         decision=decision,
@@ -976,12 +1040,7 @@ def critic_node(state: VentureScoutState) -> dict:
             f"No agent run covered hypothesis {hypothesis_id}"
             for hypothesis_id in uncovered_hypotheses
         ],
-        next_experiments=[
-            "H1: 타깃 고객 10명에게 회의 후속 업무 pain intensity를 인터뷰한다.",
-            "H3: 구매 담당자 기준 좌석당 지불 의사와 예산 출처를 확인한다.",
-            "H4: 30분 회의 10건으로 지연시간, 전사 비용, LLM 비용을 측정한다.",
-            "H5: high_watch IP 후보에 대해 claim chart를 수동 작성한다.",
-        ],
+        next_experiments=next_experiments,
     )
     # 사람이 README 없이도 규칙을 이해할 수 있게 output_json에도 decision_rule을 남긴다.
     # 나중에 dashboard/Evidence Board에서 "왜 more_research가 나왔는지" 보여주는 데 쓸 수 있다.
@@ -1032,6 +1091,21 @@ def critic_node(state: VentureScoutState) -> dict:
     critic_output_json["scorecard"] = scorecard
     critic_output_json["decision_rule"] = decision_rule
 
+    professional_report = build_professional_final_report(
+        idea=state.get("idea"),
+        hypotheses=state.get("hypotheses", []),
+        documents=state.get("documents", {}),
+        evidence_items=evidence_items,
+        agent_runs=agent_runs,
+        candidates=candidates,
+        critic=critic,
+        scorecard=scorecard,
+        decision_rule=decision_rule,
+    )
+    # DB 스키마나 CriticResult 계약을 늘리지 않고, 느슨한 output_json 안에
+    # 운영용 상세 보고서를 보관한다.
+    critic_output_json["professional_report"] = professional_report
+
     critic_run = AgentRun(
         agent_run_id="run_mock_critic",
         job_id=job_id,
@@ -1062,7 +1136,7 @@ def critic_node(state: VentureScoutState) -> dict:
         "agent_runs": [critic_run],
         "analysis_job": analysis_job,
         "decision": critic.decision,
-        "final_report": critic.model_dump(),
+        "final_report": professional_report,
     }
 
     # 최종 리포트 로깅

@@ -17,12 +17,15 @@ from db.connection import db_cursor, get_database_url
 
 
 TABLES = [
-    "documents",
     "ideas",
-    "hypotheses",
-    "evidence_items",
     "analysis_jobs",
+    "hypotheses",
+    "documents",
+    "evidence_items",
     "agent_runs",
+    "patent_claims",
+    "claim_limitations",
+    "ip_overlap_candidates",
 ]
 
 

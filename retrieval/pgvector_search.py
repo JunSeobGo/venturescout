@@ -79,6 +79,8 @@ def search_documents_by_vector(
                 ext_id,
                 title,
                 canonical_url,
+                reliability_score,
+                freshness_score,
                 LEFT(COALESCE(clean_text, ''), 300) AS clean_text_preview,
                 vector_dims(embedding) AS embedding_dim,
                 embedding <=> %s::vector AS distance

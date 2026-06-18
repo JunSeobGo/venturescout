@@ -3,7 +3,6 @@
 import json
 import logging
 import sys
-from datetime import datetime
 
 # 로그 포맷 설정
 LOG_FORMAT = "%(asctime)s | %(name)s | %(levelname)s | %(message)s"
@@ -45,10 +44,10 @@ def log_input(logger: logging.Logger, data: dict, label: str = "INPUT"):
 
 def log_processing(logger: logging.Logger, step: str, details: dict = None):
     """처리 단계 로깅."""
-    logger.info(f"→ {step}")
+    logger.info(f"> {step}")
     if details:
         for key, value in details.items():
-            logger.info(f"  ├ {key}: {value}")
+            logger.info(f"  - {key}: {value}")
 
 
 def log_output(logger: logging.Logger, data: dict, label: str = "OUTPUT"):
@@ -65,22 +64,22 @@ def log_output(logger: logging.Logger, data: dict, label: str = "OUTPUT"):
 
 def log_error(logger: logging.Logger, error: Exception, context: str = ""):
     """에러 로깅."""
-    logger.error(f"❌ 에러 발생{f' ({context})' if context else ''}")
+    logger.error(f"[ERROR] 에러 발생{f' ({context})' if context else ''}")
     logger.error(f"  유형: {type(error).__name__}")
     logger.error(f"  메시지: {str(error)}")
 
 
 def log_validation(logger: logging.Logger, checks: dict):
     """검증 결과 로깅."""
-    logger.info("📋 검증 결과:")
+    logger.info("[VALIDATION] 검증 결과:")
     for check_name, result in checks.items():
-        status = "✓" if result.get("passed", False) else "✗"
+        status = "PASS" if result.get("passed", False) else "FAIL"
         logger.info(f"  {status} {check_name}: {result.get('message', '')}")
 
 
 def log_grounding(logger: logging.Logger, agent_name: str, evidence_ids: list, confidence: str):
     """근거 연결 로깅."""
-    logger.info(f"📌 근거 연결 [{agent_name}]:")
+    logger.info(f"[GROUNDING] 근거 연결 [{agent_name}]:")
     logger.info(f"  신뢰도: {confidence}")
     logger.info(f"  근거 ID 개수: {len(evidence_ids)}")
     for eid in evidence_ids[:3]:  # 처음 3개만 표시
@@ -91,19 +90,19 @@ def log_grounding(logger: logging.Logger, agent_name: str, evidence_ids: list, c
 
 def log_decision(logger: logging.Logger, decision: str, confidence: str, reasons: list):
     """최종 판단 로깅."""
-    logger.info(f"🎯 최종 판단:")
+    logger.info("[DECISION] 최종 판단:")
     logger.info(f"  결정: {decision}")
     logger.info(f"  신뢰도: {confidence}")
     logger.info(f"  사유:")
     for reason in reasons[:5]:  # 처음 5개만 표시
-        logger.info(f"    • {reason}")
+        logger.info(f"    - {reason}")
     if len(reasons) > 5:
         logger.info(f"    ... 외 {len(reasons) - 5}개")
 
 
 def log_completion(logger: logging.Logger, node: str, duration_ms: float = None):
     """노드 완료 로깅."""
-    msg = f"✅ {node} 노드 완료"
+    msg = f"[DONE] {node} 노드 완료"
     if duration_ms:
         msg += f" ({duration_ms:.0f}ms)"
     logger.info(msg)
