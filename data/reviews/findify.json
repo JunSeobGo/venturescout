@@ -7,8 +7,7 @@
     "product": "Findify",
     "sentiment": "negative",
     "issue_type": [
-      "recommendations gated to top tier",
-      "limited independent review history"
+      "Feature_Limitation"
     ],
     "source": "apps.shopify.com/findify-search-personalize + capterra.com/p/158883/findify",
     "collected_date": "2026-06-17"

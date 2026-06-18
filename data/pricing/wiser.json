@@ -11,6 +11,8 @@
     "top_tier_monthly_usd": 49,
     "free_tier": true,
     "source": "digismoothie.com/app/wiser",
-    "collected_date": "2026-06-17"
+    "collected_date": "2026-06-17",
+    "min_price_usd": 0,
+    "max_price_usd": 49
   }
 }

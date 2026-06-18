@@ -11,6 +11,8 @@
     "implementation_standard_usd": "30000-80000",
     "implementation_enterprise_usd": "100000-300000+",
     "source": "spadoom.com/en/blog/sap-engagement-cloud-pricing-cost-guide",
-    "collected_date": "2026-06-17"
+    "collected_date": "2026-06-17",
+    "min_price_usd": 1500,
+    "max_price_usd": 15000
   }
 }

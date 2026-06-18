@@ -7,9 +7,8 @@
     "product": "Bloomreach Discovery",
     "sentiment": "negative",
     "issue_type": [
-      "technical complexity",
-      "usage tier upselling",
-      "implementation delay"
+      "Implementation_Complexity",
+      "Pricing_Complexity"
     ],
     "source": "g2.com/products/bloomreach-bloomreach/pricing",
     "collected_date": "2026-06-17"

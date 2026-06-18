@@ -7,8 +7,8 @@
     "product": "Rebuy",
     "sentiment": "negative",
     "issue_type": [
-      "cart customization loss",
-      "modular package complexity"
+      "Feature_Limitation",
+      "Pricing_Complexity"
     ],
     "source": "help.rebuyengine.com/en/articles/7135807-rebuy-s-smart-cart",
     "collected_date": "2026-06-17"

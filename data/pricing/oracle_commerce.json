@@ -10,6 +10,8 @@
     "premium_tier_min_annual_usd": 800000,
     "midsize_typical_annual_usd": "180000-250000",
     "source": "redresscompliance.com/oracle-commerce-cloud-pricing + litextension.com",
-    "collected_date": "2026-06-17"
+    "collected_date": "2026-06-17",
+    "min_price_usd": 15000,
+    "max_price_usd": 66667
   }
 }

@@ -7,9 +7,8 @@
     "product": "SAP Emarsys",
     "sentiment": "negative",
     "issue_type": [
-      "onboarding complexity",
-      "platform underutilization",
-      "edition mismatch risk"
+      "Implementation_Complexity",
+      "Target_Mismatch"
     ],
     "source": "g2.com + spadoom.com",
     "collected_date": "2026-06-17"

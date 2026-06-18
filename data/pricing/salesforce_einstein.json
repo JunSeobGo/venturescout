@@ -10,6 +10,8 @@
     "b2b_gmv_rate": "1-2%",
     "pricing_disclosure": "quote-driven, not public",
     "source": "salesforce.com/products/b2c-commerce-pricing + elogic.co/blog/salesforce-pricing-plans",
-    "collected_date": "2026-06-17"
+    "collected_date": "2026-06-17",
+    "min_price_usd": null,
+    "max_price_usd": null
   }
 }

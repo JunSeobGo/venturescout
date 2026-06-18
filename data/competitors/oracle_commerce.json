@@ -5,7 +5,7 @@
   "clean_text": "Oracle Commerce Cloud (OCC), part of Oracle CX, is a cloud-native enterprise ecommerce platform offering product recommendations, related product displays, and personalized storefront content through embedded AI and machine learning. Built on an integration-first philosophy that connects with Oracle's broader CX ecosystem including CPQ, ERP, and back-office systems. Supports multi-site management, advanced search and navigation, and audience-based personalization. Targets large-scale B2B and B2C retailers requiring deep backend integration. Evolved from the legacy Oracle ATG and Endeca platforms.",
   "meta": {
     "product": "Oracle Commerce Cloud",
-    "category": "enterprise ecommerce platform with AI recommendations",
+    "category": "ecommerce_platform",
     "parent": "Oracle",
     "platform": [
       "Oracle Cloud CX"

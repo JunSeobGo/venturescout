@@ -7,8 +7,8 @@
     "product": "Coveo Relevance Cloud",
     "sentiment": "negative",
     "issue_type": [
-      "rising total cost of ownership",
-      "scope mismatch for ecommerce-only buyers"
+      "Price",
+      "Target_Mismatch"
     ],
     "source": "g2.com/products/coveo/reviews + softwareworld.co",
     "collected_date": "2026-06-17"

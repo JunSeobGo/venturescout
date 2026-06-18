@@ -6,7 +6,7 @@
   "meta": {
     "product": "Google Recommendations AI",
     "current_name": "Vertex AI Search for commerce",
-    "category": "managed ML recommendation service",
+    "category": "recommendation_engine",
     "parent": "Google Cloud",
     "platform": [
       "Google Cloud"

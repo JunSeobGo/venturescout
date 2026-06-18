@@ -5,7 +5,7 @@
   "clean_text": "Bazaarvoice, founded in 2005 and headquartered in Austin, Texas, is a shopper engagement platform specializing in collecting, moderating, and syndicating customer reviews, ratings, and user-generated content across a brand's own site and a network of retail partners including Walmart, Home Depot, and Costco. While not a dedicated recommendation engine, its review and sentiment data feeds into merchandising decisions and influences which products surface in recommendation widgets. Reaches over a billion shoppers monthly through its syndication network. Targets enterprise brands and retailers with large catalogs needing trust signals across multiple sales channels.",
   "meta": {
     "product": "Bazaarvoice",
-    "category": "ratings, reviews, and UGC platform (recommendation-adjacent)",
+    "category": "ugc_reviews",
     "founded": 2005,
     "platform": [
       "own site",

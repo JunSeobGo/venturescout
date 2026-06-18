@@ -9,6 +9,8 @@
     "shopify_engagement_annual_usd": 19020,
     "publicly_disclosed": "partial (Shopify App Store only)",
     "source": "bigsur.ai/blog/bloomreach-pricing",
-    "collected_date": "2026-06-17"
+    "collected_date": "2026-06-17",
+    "min_price_usd": 1585,
+    "max_price_usd": null
   }
 }

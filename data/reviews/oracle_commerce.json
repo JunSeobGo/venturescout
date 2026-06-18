@@ -7,9 +7,9 @@
     "product": "Oracle Commerce Cloud",
     "sentiment": "negative",
     "issue_type": [
-      "high implementation cost",
-      "unpredictable pricing scaling",
-      "multiple partner dependency"
+      "Price",
+      "Pricing_Complexity",
+      "Implementation_Complexity"
     ],
     "source": "trustradius.com + gartner.com",
     "collected_date": "2026-06-17"

@@ -7,8 +7,7 @@
     "product": "Insider One",
     "sentiment": "negative",
     "issue_type": [
-      "requires scale for ROI",
-      "not suited to small merchants"
+      "Target_Mismatch"
     ],
     "source": "trustradius.com/products/insider-growth-management-platform-gmp",
     "collected_date": "2026-06-17"

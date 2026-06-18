@@ -7,9 +7,9 @@
     "product": "Algolia Recommend",
     "sentiment": "negative",
     "issue_type": [
-      "platform lock-in",
-      "support limitations",
-      "promotional credit pitfalls"
+      "Vendor_Lock_in",
+      "Product_Stability",
+      "Contract_Terms"
     ],
     "source": "meilisearch.com/blog/algolia-review + oreateai.com",
     "collected_date": "2026-06-17"

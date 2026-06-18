@@ -10,6 +10,8 @@
     "free_tier_requests_monthly": 10000,
     "contract_value_increase_pct": "20-40",
     "source": "bigsur.ai/blog/algolia-pricing",
-    "collected_date": "2026-06-17"
+    "collected_date": "2026-06-17",
+    "min_price_usd": 0,
+    "max_price_usd": null
   }
 }

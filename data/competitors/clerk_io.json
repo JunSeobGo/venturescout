@@ -5,7 +5,7 @@
   "clean_text": "Clerk.io is an AI-driven ecommerce personalization platform serving over 2,500 stores worldwide, offering modular tools including intelligent site search, product recommendations, email automation, and cookieless audience segmentation. Recommendations use pre-defined logic spanning hot products, seasonal trends, order history, click history, and cross-selling rules, configurable through a WYSIWYG drag-and-drop interface for placement on homepage, category, and checkout pages. Integrates with Magento, Shopify, Salesforce, and HubSpot via API. Targets small to mid-size ecommerce businesses, with Clerk.io claiming a 15-30% sales increase from personalized search and recommendations.",
   "meta": {
     "product": "Clerk.io",
-    "category": "modular ecommerce personalization and search platform",
+    "category": "personalization_platform",
     "platform": [
       "Magento",
       "Shopify",

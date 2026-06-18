@@ -7,8 +7,8 @@
     "product": "Dynamic Yield",
     "sentiment": "negative",
     "issue_type": [
-      "high cost excludes small teams",
-      "pricing opacity"
+      "Price",
+      "Pricing_Complexity"
     ],
     "source": "personizely.net/blog/dynamic-yield-pricing",
     "collected_date": "2026-06-17"

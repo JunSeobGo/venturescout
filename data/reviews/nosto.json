@@ -7,9 +7,9 @@
     "product": "Nosto",
     "sentiment": "negative",
     "issue_type": [
-      "cost for small merchants",
-      "narrow personalization scope",
-      "auto-renewal contract terms"
+      "Price",
+      "Feature_Limitation",
+      "Contract_Terms"
     ],
     "source": "zigpoll.com + vendr.com/marketplace/nosto-solutions",
     "collected_date": "2026-06-17"

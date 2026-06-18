@@ -8,6 +8,8 @@
     "pricing_model": "custom enterprise quote",
     "publicly_disclosed": false,
     "source": "g2.com/products/richrelevance/reviews",
-    "collected_date": "2026-06-17"
+    "collected_date": "2026-06-17",
+    "min_price_usd": null,
+    "max_price_usd": null
   }
 }

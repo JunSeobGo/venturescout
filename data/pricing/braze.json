@@ -10,6 +10,8 @@
     "pro_tier_annual_usd": "80000-250000",
     "enterprise_annual_usd": "300000-1000000+",
     "source": "vendr.com/marketplace/braze",
-    "collected_date": "2026-06-17"
+    "collected_date": "2026-06-17",
+    "min_price_usd": 5000,
+    "max_price_usd": 83333
   }
 }

@@ -7,9 +7,9 @@
     "product": "Constructor.io",
     "sentiment": "negative",
     "issue_type": [
-      "high minimum contract value",
-      "complex onboarding",
-      "results-based pricing complexity"
+      "Price",
+      "Implementation_Complexity",
+      "Pricing_Complexity"
     ],
     "source": "vendr.com/marketplace/constructor-io",
     "collected_date": "2026-06-17"

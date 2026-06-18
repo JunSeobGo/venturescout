@@ -12,6 +12,8 @@
     "training_per_node_hour_usd": 2.5,
     "free_trial": "$600 credits, 6 months",
     "source": "cloud.google.com/retail/pricing",
-    "collected_date": "2026-06-17"
+    "collected_date": "2026-06-17",
+    "min_price_usd": 0,
+    "max_price_usd": null
   }
 }

@@ -7,9 +7,9 @@
     "product": "Clerk.io",
     "sentiment": "negative",
     "issue_type": [
-      "platform integration issues",
-      "limited customization",
-      "modular pricing complexity"
+      "Implementation_Complexity",
+      "Feature_Limitation",
+      "Pricing_Complexity"
     ],
     "source": "getapp.com/website-ecommerce-software/a/clerk-io",
     "collected_date": "2026-06-17"

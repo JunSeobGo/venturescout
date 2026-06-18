@@ -6,7 +6,7 @@
   "meta": {
     "product": "Klevu",
     "parent_company": "Athos Commerce (merger of Klevu and Searchspring, January 2025)",
-    "category": "AI search and product discovery with recommendations",
+    "category": "search_discovery",
     "platform": [
       "Shopify",
       "BigCommerce",

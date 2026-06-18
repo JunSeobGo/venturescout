@@ -5,7 +5,7 @@
   "clean_text": "Algolia Recommend is the product recommendation module built on top of Algolia's AI-native search-as-a-service platform, serving over 18,000 businesses processing 1.75 trillion searches annually. Offers frequently bought together, related products, and trending items recommendation models, requiring an existing Algolia Search subscription. Recommendation models are trained using the same catalog and behavioral event data already indexed for search. No self-hosting option is available, creating platform lock-in. Targets developers and mid-to-large ecommerce companies already invested in the Algolia search ecosystem.",
   "meta": {
     "product": "Algolia Recommend",
-    "category": "AI recommendation layer (search add-on)",
+    "category": "recommendation_engine",
     "parent": "Algolia",
     "platform": [
       "web",

@@ -5,7 +5,7 @@
   "clean_text": "Amazon Personalize is a fully managed machine learning service by AWS that enables real-time personalized product recommendations, search ranking, and user segmentation. It uses collaborative filtering, deep learning, and contextual bandits models. Integrates natively with AWS ecosystem including S3, SageMaker, Amplify, and Lambda. Targets mid-to-large enterprises and developers building custom recommendation pipelines. Purely API-based with no plug-and-play storefront UI.",
   "meta": {
     "product": "Amazon Personalize",
-    "category": "managed ML recommendation service",
+    "category": "recommendation_engine",
     "parent": "Amazon Web Services",
     "platform": [
       "AWS"

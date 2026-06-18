@@ -5,7 +5,7 @@
   "clean_text": "Vue.ai is an enterprise AI platform specializing in visual merchandising automation and personalization for retail, combining computer vision and natural language processing for product tagging, catalog management, virtual dressing rooms, and personalized recommendations including a Shop the Look feature. Trusted by over 100 retailers including Diesel, Nordstrom, and Rent the Runway. Distinguishes itself through visual AI capabilities like automated on-model imagery and AI-enabled styling, beyond standard collaborative or behavioral recommendation models. Targets mid-market to enterprise fashion, apparel, and lifestyle retailers with large catalogs and complex visual merchandising needs.",
   "meta": {
     "product": "Vue.ai",
-    "category": "visual AI retail automation and personalization",
+    "category": "visual_ai",
     "platform": [
       "Shopify",
       "enterprise ecommerce platforms"

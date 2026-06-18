@@ -10,6 +10,8 @@
     "professional_monthly_usd": 799,
     "enterprise_monthly_usd": 1199,
     "source": "apps.shopify.com/findify-search-personalize",
-    "collected_date": "2026-06-17"
+    "collected_date": "2026-06-17",
+    "min_price_usd": 499,
+    "max_price_usd": 1199
   }
 }

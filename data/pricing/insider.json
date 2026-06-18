@@ -9,6 +9,8 @@
     "average_annual_usd": 48000,
     "max_observed_annual_usd": 100000,
     "source": "vendr.com/buyer-guides/insider",
-    "collected_date": "2026-06-17"
+    "collected_date": "2026-06-17",
+    "min_price_usd": 4000,
+    "max_price_usd": 8333
   }
 }

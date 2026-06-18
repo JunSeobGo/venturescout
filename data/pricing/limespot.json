@@ -10,6 +10,8 @@
     "revenue_cap": "$50K/month",
     "trial": "15 days",
     "source": "limespot.com/pricing",
-    "collected_date": "2026-06-16"
+    "collected_date": "2026-06-16",
+    "min_price_usd": 150,
+    "max_price_usd": null
   }
 }

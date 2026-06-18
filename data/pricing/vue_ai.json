@@ -9,6 +9,8 @@
     "publicly_disclosed": false,
     "total_funding_usd": 77500000,
     "source": "gartner.com/reviews/product/vue-ai + checkthat.ai/brands/vue-ai",
-    "collected_date": "2026-06-17"
+    "collected_date": "2026-06-17",
+    "min_price_usd": null,
+    "max_price_usd": null
   }
 }

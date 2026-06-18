@@ -7,9 +7,8 @@
     "product": "Klaviyo",
     "sentiment": "negative",
     "issue_type": [
-      "cost scales with profile count not value",
-      "list hygiene burden",
-      "2025 billing change impact"
+      "Pricing_Complexity",
+      "Implementation_Complexity"
     ],
     "source": "retainful.com/blog/klaviyo-pricing + omnisend.com/blog/klaviyo-pricing",
     "collected_date": "2026-06-17"

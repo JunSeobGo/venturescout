@@ -5,7 +5,7 @@
   "clean_text": "Nosto is an AI-powered Commerce Experience Platform unifying product recommendations, on-site search personalization, and category merchandising under a single control plane, powered by its experience.AI engine. Connects customer, product, and content data to personalize interactions across the product detail page, search bar, and category grid. Integrates with Shopify, BigCommerce, Magento, and Salesforce Commerce Cloud. Targets mid-market to enterprise ecommerce directors seeking one vendor covering discovery across multiple storefront touchpoints rather than separate point solutions.",
   "meta": {
     "product": "Nosto",
-    "category": "commerce experience platform (recommendations, search, merchandising)",
+    "category": "personalization_platform",
     "platform": [
       "Shopify",
       "BigCommerce",

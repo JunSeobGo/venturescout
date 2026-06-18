@@ -6,7 +6,7 @@
   "meta": {
     "product": "Salesforce Einstein Recommendations",
     "current_platform": "Agentforce Commerce",
-    "category": "AI recommendation engine",
+    "category": "recommendation_engine",
     "parent": "Salesforce",
     "platform": [
       "Salesforce Commerce Cloud",

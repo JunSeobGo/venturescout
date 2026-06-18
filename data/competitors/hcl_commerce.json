@@ -6,7 +6,7 @@
   "meta": {
     "product": "HCL Commerce",
     "former_name": "IBM WebSphere Commerce / Watson Commerce",
-    "category": "enterprise ecommerce platform with AI recommendations",
+    "category": "ecommerce_platform",
     "parent": "HCL Technologies",
     "platform": [
       "HCL Commerce Cloud",

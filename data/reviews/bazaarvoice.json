@@ -7,9 +7,8 @@
     "product": "Bazaarvoice",
     "sentiment": "negative",
     "issue_type": [
-      "pricing opacity",
-      "high implementation cost",
-      "enterprise-sized feature gating"
+      "Pricing_Complexity",
+      "Price"
     ],
     "source": "wiserreview.com/blog/bazaarvoice-pricing + wiserreview.com/blog/bazaarvoice-alternatives",
     "collected_date": "2026-06-17"

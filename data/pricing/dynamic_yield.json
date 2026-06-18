@@ -9,6 +9,8 @@
     "publicly_disclosed": false,
     "free_tier": false,
     "source": "personizely.net/blog/dynamic-yield-pricing",
-    "collected_date": "2026-06-17"
+    "collected_date": "2026-06-17",
+    "min_price_usd": null,
+    "max_price_usd": null
   }
 }

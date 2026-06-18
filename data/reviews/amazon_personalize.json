@@ -7,9 +7,8 @@
     "product": "Amazon Personalize",
     "sentiment": "negative",
     "issue_type": [
-      "implementation complexity",
-      "engineering dependency",
-      "pricing structure"
+      "Implementation_Complexity",
+      "Pricing_Complexity"
     ],
     "source": "G2 + Gartner Peer Insights",
     "collected_date": "2026-06-17"

@@ -11,6 +11,8 @@
     "cloud_start_usd": 40000,
     "cloud_max_usd": 190000,
     "source": "checkthat.ai + mgt-commerce.com + folio3.com",
-    "collected_date": "2026-06-17"
+    "collected_date": "2026-06-17",
+    "min_price_usd": 1833,
+    "max_price_usd": 15833
   }
 }

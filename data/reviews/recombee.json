@@ -7,9 +7,8 @@
     "product": "Recombee",
     "sentiment": "negative",
     "issue_type": [
-      "steep learning curve",
-      "requires technical resources",
-      "weaker visual recommendation focus"
+      "Implementation_Complexity",
+      "Feature_Limitation"
     ],
     "source": "eesel.ai/blog/ai-visual-recommendation",
     "collected_date": "2026-06-17"

@@ -7,9 +7,9 @@
     "product": "RichRelevance",
     "sentiment": "negative",
     "issue_type": [
-      "pricing opacity",
-      "brand confusion",
-      "enterprise-only positioning"
+      "Pricing_Complexity",
+      "Product_Stability",
+      "Feature_Limitation"
     ],
     "source": "g2.com + softwaresuggest.com",
     "collected_date": "2026-06-17"

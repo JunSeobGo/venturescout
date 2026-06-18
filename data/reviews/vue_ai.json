@@ -7,9 +7,9 @@
     "product": "Vue.ai",
     "sentiment": "negative",
     "issue_type": [
-      "sizing accuracy at scale",
-      "pricing opacity",
-      "acquisition uncertainty"
+      "Performance",
+      "Pricing_Complexity",
+      "Product_Stability"
     ],
     "source": "g2.com/products/vue-ai/reviews + checkthat.ai/brands/vue-ai + peerspot.com",
     "collected_date": "2026-06-17"

@@ -10,6 +10,8 @@
     "basic_monthly_usd": 19.99,
     "overage_per_1000_displays_usd": 1,
     "source": "apps.shopify.com/recommendation-kit",
-    "collected_date": "2026-06-17"
+    "collected_date": "2026-06-17",
+    "min_price_usd": 0,
+    "max_price_usd": null
   }
 }

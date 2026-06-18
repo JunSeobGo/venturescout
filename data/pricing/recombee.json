@@ -12,6 +12,8 @@
     "pro_monthly_usd": 1499,
     "premium_monthly_usd": 2499,
     "source": "softwarefinder.com/artificial-intelligence/recombee",
-    "collected_date": "2026-06-17"
+    "collected_date": "2026-06-17",
+    "min_price_usd": 0,
+    "max_price_usd": 2499
   }
 }

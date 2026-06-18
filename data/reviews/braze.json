@@ -7,9 +7,9 @@
     "product": "Braze",
     "sentiment": "negative",
     "issue_type": [
-      "no native storefront widgets",
-      "segmentation constraints",
-      "enterprise-only cost structure"
+      "Feature_Missing",
+      "Feature_Limitation",
+      "Price"
     ],
     "source": "maestra.io/blog/comparisons/braze-alternatives + spendflo.com",
     "collected_date": "2026-06-17"

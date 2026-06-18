@@ -7,9 +7,9 @@
     "product": "Klevu",
     "sentiment": "negative",
     "issue_type": [
-      "premium pricing for small stores",
-      "add-on dependency",
-      "post-merger uncertainty"
+      "Price",
+      "Pricing_Complexity",
+      "Product_Stability"
     ],
     "source": "addsearch.com/blog/klevu-alternatives + blog.expertrec.com/klevu-shopify",
     "collected_date": "2026-06-17"

@@ -7,9 +7,9 @@
     "product": "Segmentify",
     "sentiment": "negative",
     "issue_type": [
-      "complex platform integration issues",
-      "limited customization",
-      "no public API"
+      "Implementation_Complexity",
+      "Feature_Limitation",
+      "Feature_Missing"
     ],
     "source": "capterra.com/p/151750/Segmentify + softwareworld.co/software/segmentify-reviews",
     "collected_date": "2026-06-17"

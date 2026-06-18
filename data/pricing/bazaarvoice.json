@@ -9,6 +9,8 @@
     "lowest_entry_annual_usd": "6500-15000",
     "typical_range_annual_usd": "10000-200000+",
     "source": "wiserreview.com/blog/bazaarvoice-pricing",
-    "collected_date": "2026-06-17"
+    "collected_date": "2026-06-17",
+    "min_price_usd": 542,
+    "max_price_usd": 16667
   }
 }

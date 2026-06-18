@@ -11,6 +11,8 @@
     "10k_contacts_monthly_usd": 150,
     "20k_contacts_monthly_usd": 375,
     "source": "emitrr.com/blog/klaviyo-pricing + omnisend.com/blog/klaviyo-pricing",
-    "collected_date": "2026-06-17"
+    "collected_date": "2026-06-17",
+    "min_price_usd": 20,
+    "max_price_usd": null
   }
 }

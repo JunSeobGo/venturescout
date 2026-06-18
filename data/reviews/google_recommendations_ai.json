@@ -7,9 +7,9 @@
     "product": "Google Recommendations AI",
     "sentiment": "negative",
     "issue_type": [
-      "engineering dependency",
-      "no plug-and-play UI",
-      "product instability"
+      "Implementation_Complexity",
+      "Feature_Missing",
+      "Product_Stability"
     ],
     "source": "cloud.google.com + G2 reviews",
     "collected_date": "2026-06-17"

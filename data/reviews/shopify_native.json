@@ -7,9 +7,8 @@
     "product": "Shopify Native Recommendations",
     "sentiment": "negative",
     "issue_type": [
-      "limited customization",
-      "migration data gap",
-      "automated logic constraints"
+      "Feature_Limitation",
+      "Vendor_Lock_in"
     ],
     "source": "shopify.dev + litos.io",
     "collected_date": "2026-06-17"

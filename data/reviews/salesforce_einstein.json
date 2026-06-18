@@ -7,10 +7,9 @@
     "product": "Salesforce Einstein Recommendations",
     "sentiment": "negative",
     "issue_type": [
-      "platform lock-in",
-      "high cost",
-      "data requirements",
-      "implementation complexity"
+      "Vendor_Lock_in",
+      "Price",
+      "Implementation_Complexity"
     ],
     "source": "Gartner Peer Insights + elogic.co + eesel.ai",
     "collected_date": "2026-06-17"

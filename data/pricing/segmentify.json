@@ -9,6 +9,8 @@
     "entry_monthly_eur": 149,
     "free_tier": false,
     "source": "getapp.com/website-ecommerce-software/a/segmentify/pricing + capterra.com/p/151750/Segmentify/pricing",
-    "collected_date": "2026-06-17"
+    "collected_date": "2026-06-17",
+    "min_price_usd": 161,
+    "max_price_usd": null
   }
 }

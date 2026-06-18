@@ -8,6 +8,8 @@
     "pricing_model": "per-feature modular subscription",
     "entry_monthly_usd": "99-119",
     "source": "capterra.com/p/184765/Clerk-io + softwarefinder.com/artificial-intelligence/clerk-io",
-    "collected_date": "2026-06-17"
+    "collected_date": "2026-06-17",
+    "min_price_usd": 99,
+    "max_price_usd": null
   }
 }
