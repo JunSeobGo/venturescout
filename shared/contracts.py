@@ -98,13 +98,13 @@ class EvidenceItem(BaseModel):
     """테이블: evidence_items. 모든 에이전트 주장은 이 ID를 인용해야 한다."""
 
     evidence_id: str
-    job_id: str = ""
+    job_id: str
     hypothesis_id: str
     document_id: str
     source_type: str
     evidence_text: str
     stance: Stance
-    relevance_score: float = 0.0
+    relevance_score: float
     reliability_score: float
 
 
@@ -172,19 +172,6 @@ class CriticResult(BaseModel):
     objections: list[str] = Field(default_factory=list)
     missing_evidence: list[str] = Field(default_factory=list)
     next_experiments: list[str] = Field(default_factory=list)
-
-
-class AgentFinding(BaseModel):
-    """Track B 내부 에이전트 출력 envelope. AgentRun 전환 전까지 track-b에서 사용."""
-
-    agent: AgentName
-    hypothesis_id: str
-    signal: str
-    grounded_on: list[str]
-    confidence: Confidence
-    depth: Depth
-    next_experiment: str | None = None
-    payload: dict[str, Any] = Field(default_factory=dict)
 
 
 # 예전 문서/도구가 OverlapCandidate를 참조해도 깨지지 않게 둔 호환 별칭.

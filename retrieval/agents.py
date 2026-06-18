@@ -13,8 +13,8 @@ from langchain_aws import ChatBedrockConverse
 from langchain_core.messages import SystemMessage, HumanMessage
 
 from config import config
-from shared.contracts import AgentFinding, EvidenceItem
-from shared.state import VentureScoutState
+from shared.contracts import EvidenceItem
+from shared.state import AgentFinding, VentureScoutState
 from retrieval.tools import retrieve
 
 logger = logging.getLogger(__name__)

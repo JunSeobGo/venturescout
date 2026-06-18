@@ -1,5 +1,6 @@
 """계약 스키마 검증 — Day 1부터 green 유지."""
-from shared.contracts import AgentFinding, AgentRun, EvidenceItem, IPOverlapCandidate
+from shared.contracts import AgentRun, EvidenceItem, IPOverlapCandidate
+from shared.state import AgentFinding
 
 
 def test_agent_finding_requires_grounding():
@@ -10,12 +11,12 @@ def test_agent_finding_requires_grounding():
 
 
 def test_evidence_stance_enum():
-    e = EvidenceItem(evidence_id="ev_1", hypothesis_id="H1", document_id="d1",
-                     source_type="seed_review", evidence_text="...",
-                     stance="contradicts", reliability_score=0.6)
+    e = EvidenceItem(evidence_id="ev_1", job_id="job_001", hypothesis_id="H1",
+                     document_id="d1", source_type="seed_review", evidence_text="...",
+                     stance="contradicts", relevance_score=0.5, reliability_score=0.6)
     assert e.stance == "contradicts"
-    assert e.job_id == ""                       # optional, 기본값 빈 문자열
-    assert e.relevance_score == 0.0             # optional, 기본값 0.0
+    assert e.job_id == "job_001"
+    assert e.relevance_score == 0.5
 
 
 def test_agent_run_grounded_on():

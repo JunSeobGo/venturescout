@@ -8,8 +8,8 @@ Track C — LangGraph 골격 (척추).
 """
 from __future__ import annotations
 from langgraph.graph import StateGraph, START, END
-from shared.state import VentureScoutState
-from shared.contracts import AgentFinding, CriticResult
+from shared.state import VentureScoutState, AgentFinding
+from shared.contracts import CriticResult
 from retrieval.tools import vector_search
 from retrieval.agents import run_market_agent, run_competitor_agent
 
