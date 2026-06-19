@@ -174,18 +174,30 @@ aws ec2 authorize-security-group-ingress --region "${RDS_SG_REGION}" \
 echo "  등록 완료"
 
 # ── 백그라운드: terminated 감지 시 RDS SG 규칙 자동 해제 ─────────────────────
-echo "[5/5] 종료 감시 백그라운드 시작 (terminated 시 SG 정리)"
+# 주의: 'aws ec2 wait instance-terminated'는 기본 10분(40×15s) 후 포기하므로
+#       임베딩이 10분 넘으면 살아있는 인스턴스의 규칙을 지워버림 → 직접 폴링으로 대체.
+#       또한 description은 인스턴스 간 공유되므로, 반드시 "이 인스턴스 IP"로만 매칭해 해제.
+echo "[5/5] 종료 감시 백그라운드 시작 (실제 terminated까지 폴링 후 이 IP 규칙만 정리)"
 nohup bash -c "
-  aws ec2 wait instance-terminated --region '${REGION}' --instance-ids '${INSTANCE_ID}'
+  while true; do
+    ST=\$(aws ec2 describe-instances --region '${REGION}' \
+      --instance-ids '${INSTANCE_ID}' \
+      --query 'Reservations[0].Instances[0].State.Name' --output text 2>/dev/null || echo unknown)
+    echo \"\$(date +%H:%M:%S) state=\$ST\"
+    [ \"\$ST\" = terminated ] && break
+    [ \"\$ST\" = unknown ] && { sleep 30; continue; }
+    sleep 30
+  done
+  # 이 인스턴스 IP(${PUBLIC_IP})에 해당하는 규칙만 해제 — 다른 인스턴스 규칙 보호
   R=\$(aws ec2 describe-security-group-rules --region '${RDS_SG_REGION}' \
     --filters 'Name=group-id,Values=${RDS_SG_ID}' \
-    --query \"SecurityGroupRules[?Description=='${RULE_DESC}' && IpProtocol=='tcp' && FromPort==\\\`5432\\\`].SecurityGroupRuleId\" \
+    --query \"SecurityGroupRules[?CidrIpv4=='${PUBLIC_IP}/32' && IpProtocol=='tcp' && FromPort==\\\`5432\\\`].SecurityGroupRuleId\" \
     --output text 2>/dev/null || true)
   for rid in \$R; do
     aws ec2 revoke-security-group-ingress --region '${RDS_SG_REGION}' \
-      --group-id '${RDS_SG_ID}' --security-group-rule-ids \"\$rid\" >/dev/null
+      --group-id '${RDS_SG_ID}' --security-group-rule-ids \"\$rid\" >/dev/null 2>&1 || true
   done
-  echo \"[monitor] terminated 감지 → RDS SG 규칙 해제 완료\"
+  echo \"[monitor] terminated 확인 → ${PUBLIC_IP} 규칙 해제 완료\"
 " > /tmp/vs_embed_monitor_${INSTANCE_ID}.log 2>&1 &
 disown
 
