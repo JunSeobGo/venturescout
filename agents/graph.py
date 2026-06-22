@@ -1160,6 +1160,112 @@ def critic_node(state: VentureScoutState) -> dict:
     return result
 
 
+<<<<<<< Updated upstream
+=======
+def alternatives_node(state: VentureScoutState) -> dict:
+    """decision == 'kill'일 때만 critic 다음에 실행되어, kill 원인별로 대안을 제안한다."""
+    start_time = time.time()
+    log_stage(logger, "8️⃣", "Alternatives (kill 대안 제안)")
+
+    job_id = state["analysis_job"].job_id
+    scorecard = state.get("critic_scorecard", {})
+    agent_runs = state.get("agent_runs", [])
+    evidence_items = state.get("evidence_items", {})
+    candidates = state.get("ip_overlap_candidates", [])
+
+    log_input(logger, {"job_id": job_id, "scorecard": scorecard})
+
+    kill_reason = _kill_reason(scorecard)
+    evidence_ids = _alternatives_evidence_ids(kill_reason, scorecard, agent_runs, candidates)
+    evidence = [evidence_items[eid] for eid in evidence_ids if eid in evidence_items]
+
+    log_processing(logger, "대안 근거 선택 완료", {
+        "kill_reason": kill_reason,
+        "evidence_count": len(evidence),
+    })
+
+    if not evidence:                       # graceful: 인용 가능 근거 0건 -> run 생략
+        log_processing(logger, "대안 근거 0건 — alternatives run 생략(graceful)")
+        return {"agent_runs": []}
+
+    role = (
+        "IP 시그니처 후보와 반박 근거가 동시에 있어 kill로 판정됐다. "
+        "특허 회피 설계 또는 vertical 범위 축소 중심으로, 기존 아이디어의 핵심은 유지한 채 "
+        "조정 가능한 대안 2~3개를 제안한다. "
+        if kill_reason == "ip_conflict" else
+        "대부분의 핵심 가설이 low confidence라 근거가 약해 kill로 판정됐다. "
+        "더 강한 근거가 있는 타겟/포지셔닝/가격정책으로 전환하는 대안 2~3개를 제안한다. "
+    )
+    role += (
+        "alternatives는 반드시 2~3개의 객체 배열이어야 하며, 각 객체에 "
+        "title, rationale, next_experiment 문자열을 모두 포함한다. "
+        "next_experiment는 무엇을·누구에게·어떻게 검증할지와 성공 판단 기준을 "
+        "한 문장으로 구체적으로 작성한다. 빈 문자열은 허용하지 않는다. "
+        '출력 예시: {"kill_reason":"weak_evidence","alternatives":['
+        '{"title":"...","rationale":"...","next_experiment":"..."}]}'
+    )
+
+    try:
+        output_json = _agent_output_with_llm(
+            agent_name="alternatives",
+            hypothesis_id="all",
+            role=role,
+            required_fields=["kill_reason", "alternatives"],
+            context={
+                "idea": state.get("idea"),
+                "kill_reason": kill_reason,
+                "critic_objections": state["critic"].objections,
+                "evidence": evidence,
+            },
+        )
+        alternatives = output_json.get("alternatives")
+        if not isinstance(alternatives, list) or not 2 <= len(alternatives) <= 3:
+            raise ValueError("alternatives must contain 2 or 3 items")
+        for index, alternative in enumerate(alternatives):
+            if not isinstance(alternative, dict):
+                raise ValueError(f"alternatives[{index}] must be an object")
+            missing = [
+                field
+                for field in ("title", "rationale", "next_experiment")
+                if not isinstance(alternative.get(field), str)
+                or not alternative[field].strip()
+            ]
+            if missing:
+                raise ValueError(
+                    f"alternatives[{index}] has missing or empty fields: {missing}"
+                )
+    except Exception as exc:  # noqa: BLE001
+        # alternatives는 kill 리포트에 곁들이는 보조 제안이다.
+        # 여기서 실패해도 이미 완성된 critic의 kill 판정/리포트 자체는 살려야 하므로
+        # (api.py가 전체 astream_events를 broad except로 감싸 job을 failed로 덮어쓴다)
+        # 다른 노드처럼 예외를 던지지 않고 evidence 0건과 같은 방식으로 graceful skip한다.
+        log_processing(logger, f"⚠️  alternatives LLM 호출 실패 — run 생략(graceful): {exc}")
+        return {"agent_runs": []}
+
+    output_json["kill_reason"] = kill_reason
+
+    agent_run = _agent_run(
+        job_id=job_id,
+        agent_name="alternatives",
+        hypothesis_id="all",
+        depth="light",
+        confidence="low",
+        evidence=evidence,
+        output_json=output_json,
+    )
+
+    duration_ms = (time.time() - start_time) * 1000
+    log_completion(logger, "Alternatives", duration_ms)
+
+    return {"agent_runs": [agent_run]}
+
+
+def _route_after_critic(state: VentureScoutState) -> str:
+    """critic 직후 라우팅: kill이면 alternatives로, 그 외엔 그래프를 끝낸다."""
+    return "alternatives" if state.get("decision") == "kill" else END
+
+
+>>>>>>> Stashed changes
 def build_graph():
     # LangGraph에 노드를 등록하고 실행 순서를 연결한다.
     # 현재 구조는 Structuring 이후 5개 분석 노드가 병렬로 실행되고, 마지막에 Critic이 합친다.

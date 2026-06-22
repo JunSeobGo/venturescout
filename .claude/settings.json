@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -c ' *)",
+      "Bash(python -c \"import sys; sys.stdout.buffer.write\\(sys.stdin.buffer.read\\(\\)\\)\")",
+      "Bash(python /tmp/sse_client.py competitive)",
+      "Bash(find /c/Users/ko911 -maxdepth 2 -iname \"sse_client.py\" 2>/dev/null; echo \"---\"; ls -la /tmp/ 2>&1 | head -5; echo \"---winhome tmp---\"; ls -la \"C:\\\\Users\\\\ko911\\\\venturescout\\\\tmp\" 2>&1)",
+      "Read(//c/Users/ko911/**)",
+      "Bash(python tmp/sse_client.py competitive)",
+      "Bash(pip show *)",
+      "Bash(xargs grep -l \"SentenceTransformer\\\\|AutoModel\")",
+      "Bash(grep -iE \"torch|transformers|sentence\" requirements.txt)",
+      "Bash(find . -maxdepth 1 -iname \"requirements*.txt\" -o -iname \"pyproject.toml\")",
+      "Bash(pip install *)",
+      "Bash(python -m pytest tests/test_alternatives_node.py::test_alternatives_node_skips_gracefully_when_llm_call_fails -v)",
+      "Bash(python -m pytest -q)"
+    ]
+  }
+}

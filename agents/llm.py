@@ -63,7 +63,11 @@ def invoke_claude_json(
     user: str,
     fallback: dict[str, Any],
 ) -> dict[str, Any]:
+<<<<<<< Updated upstream
     """Claude에게 JSON 출력을 요청하고 실패하면 fallback을 반환한다.
+=======
+    """Invoke Claude and repair one malformed JSON response before failing."""
+>>>>>>> Stashed changes
 
     네트워크, 인증, 권한, JSON 파싱 오류가 있어도 그래프 전체가 깨지지 않게
     기본 mock 결과를 그대로 돌려준다.
@@ -81,30 +85,87 @@ def invoke_claude_json(
             "bedrock-runtime",
             region_name=config.region_name,
         )
-        response = client.converse(
-            modelId=config.model_id,
-            system=[{"text": system}],
-            messages=[
-                {
-                    "role": "user",
-                    "content": [{"text": user}],
-                }
-            ],
-            inferenceConfig={
-                "temperature": config.temperature,
-                "maxTokens": config.max_tokens,
-            },
+        text = _converse_text(
+            client=client,
+            config=config,
+            system=system,
+            user=user,
         )
+<<<<<<< Updated upstream
         text = _collect_text(response)
         parsed = _parse_json_object(text)
         if not isinstance(parsed, dict):
             return fallback
         return _merge_dicts(fallback, parsed)
+=======
+        try:
+            parsed = _parse_json_object(text)
+        except json.JSONDecodeError as first_error:
+            parsed = _repair_json_response(
+                client=client,
+                config=config,
+                malformed_text=text,
+                parse_error=first_error,
+            )
+>>>>>>> Stashed changes
     except Exception as exc:
         fallback_with_error = dict(fallback)
         fallback_with_error["llm_error"] = str(exc)
         fallback_with_error["llm_fallback_used"] = True
         return fallback_with_error
+
+
+def _converse_text(
+    *,
+    client: Any,
+    config: ClaudeConfig,
+    system: str,
+    user: str,
+) -> str:
+    response = client.converse(
+        modelId=config.model_id,
+        system=[{"text": system}],
+        messages=[
+            {
+                "role": "user",
+                "content": [{"text": user}],
+            }
+        ],
+        inferenceConfig={
+            "temperature": config.temperature,
+            "maxTokens": config.max_tokens,
+        },
+    )
+    return _collect_text(response)
+
+
+def _repair_json_response(
+    *,
+    client: Any,
+    config: ClaudeConfig,
+    malformed_text: str,
+    parse_error: json.JSONDecodeError,
+) -> dict[str, Any]:
+    """Ask Claude once to repair syntax without changing the response meaning."""
+
+    repaired_text = _converse_text(
+        client=client,
+        config=config,
+        system=(
+            "너는 JSON 문법 교정기다. 입력의 의미와 키·값을 바꾸지 말고 "
+            "JSON 문법 오류만 고쳐라. 설명과 마크다운 없이 JSON object 하나만 반환한다."
+        ),
+        user=(
+            f"파싱 오류: {parse_error.msg}, line={parse_error.lineno}, "
+            f"column={parse_error.colno}\n\n"
+            "다음 응답을 유효한 JSON object로 교정해라:\n"
+            f"{malformed_text}"
+        ),
+    )
+    parsed = _parse_json_object(repaired_text)
+    if not isinstance(parsed, dict):
+        raise RuntimeError("Repaired Bedrock response must be a JSON object.")
+    return parsed
 
 
 def _collect_text(response: dict[str, Any]) -> str:
