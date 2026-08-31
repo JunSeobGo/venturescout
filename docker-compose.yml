@@ -1,4 +1,26 @@
 services:
+  # 로컬 데이터 계층. ADR-031에서 공용 RDS로 옮기며 제거했던 db 서비스를 되살린 것이다
+  # — 부트캠프 종료로 RDS 인스턴스가 삭제돼(DNS 미해석) 더는 붙을 곳이 없다.
+  # 시드 270건(data/*/*.json)은 레포에 남아 있어 로컬만으로 검색 계층을 재현할 수 있다.
+  # 자세한 절차: docs/local-setup.md
+  db:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_DB: venturescout
+      POSTGRES_USER: vs
+      POSTGRES_PASSWORD: vs_local     # 로컬 전용. 외부 노출 안 함
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # 최초 기동 시 1회 자동 실행(데이터 볼륨이 비어 있을 때만)
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vs -d venturescout"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
   api:
     build: .
     env_file: .env
@@ -23,3 +45,5 @@ services:
 
 volumes:
   hf_cache:   # 임베딩 모델(HuggingFace) 캐시 — api 재시작/재빌드에도 재다운로드 방지
+  pgdata:     # 로컬 postgres 데이터. 스키마를 다시 깔려면 이 볼륨을 지워야 한다
+              # (init.sql은 볼륨이 비어 있을 때만 실행된다)
