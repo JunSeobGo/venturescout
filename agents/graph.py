@@ -25,6 +25,7 @@ from typing import Any, Literal
 
 from langgraph.graph import END, START, StateGraph
 
+from agents.guardrails import detect_overclaim
 from agents.llm import (
     current_model_name,
     invoke_claude_json,
@@ -335,6 +336,44 @@ def _structured_idea_payload(
     return idea_payload, hypotheses_payload
 
 
+def _narrative_text(output_json: dict[str, Any]) -> str:
+    """output_json에서 사람이 읽는 문자열만 모아 잇는다 — 과장 표현 검사 입력.
+
+    `_evidence_strength` 같은 내부 계산값과 `llm_*` 메타는 에이전트의 주장이 아니므로
+    검사 대상에서 뺀다. 중첩 dict/list는 끝까지 훑는다(risk_register 등).
+    """
+    parts: list[str] = []
+
+    def walk(value: Any) -> None:
+        if isinstance(value, str):
+            parts.append(value)
+        elif isinstance(value, dict):
+            for item in value.values():
+                walk(item)
+        elif isinstance(value, list):
+            for item in value:
+                walk(item)
+
+    for key, value in output_json.items():
+        if key.startswith("_") or key.startswith("llm_"):
+            continue
+        walk(value)
+    return "\n".join(parts)
+
+
+def _overclaim_audit(output_json: dict[str, Any]) -> list[str]:
+    """에이전트 출력에서 금지된 단정 표현을 찾는다(agents.guardrails.BANNED_CLAIMS).
+
+    지금까지 `overclaim_flag`는 항상 False 하드코딩이었고 `detect_overclaim()`은
+    호출되지 않는 죽은 코드였다 — README가 내세우는 "근거 없는 확정적 주장 방지"가
+    측정되지 않던 상태. 여기서 실제로 돌려 AgentRun에 기록한다.
+
+    조정 가능 지점: 탐지율은 BANNED_CLAIMS 목록에 전적으로 의존한다. 현재는 정확
+    문자열 8종이라 보수적이다(오탐 0, 미탐 가능). 실측 후 표현을 늘리는 것이 다음 단계.
+    """
+    return detect_overclaim(_narrative_text(output_json))
+
+
 def _agent_run(
     *,
     job_id: str,
@@ -352,8 +391,14 @@ def _agent_run(
       각 노드에 개별적으로 적재 코드를 넣을 필요가 없다.
     - 적재 실패 시에도 AgentRun을 반환하므로 그래프 흐름이 끊기지 않는다.
     """
+    overclaims = _overclaim_audit(output_json)
     # critic이 borderline(판정 경계) 여부를 판단할 수 있게 evidence strength를 실어 보낸다.
-    output_json = {**output_json, "_evidence_strength": _evidence_strength(evidence)}
+    # 검출된 과장 표현도 함께 남겨 평가 하네스가 사후에 되짚을 수 있게 한다.
+    output_json = {
+        **output_json,
+        "_evidence_strength": _evidence_strength(evidence),
+        "_overclaim_phrases": overclaims,
+    }
     run = AgentRun(
         agent_run_id=str(uuid.uuid4()),
         job_id=job_id,
@@ -365,7 +410,7 @@ def _agent_run(
         grounded_on=[item.evidence_id for item in evidence],
         output_json=output_json,
         groundedness_score=1.0 if evidence else 0.0,
-        overclaim_flag=False,
+        overclaim_flag=bool(overclaims),
         status="done",
     )
 
@@ -1231,8 +1276,13 @@ def critic_node(state: VentureScoutState) -> dict:
         next_experiments=_to_str_list(critic_output_json["next_experiments"]),
     )
     critic_output_json.update(critic.model_dump())
+    # 검수자 자신도 과장하지 않는지 같은 기준으로 검사한다.
+    # scorecard·decision_rule은 코드가 만든 값이라 "에이전트의 주장"이 아니므로
+    # 검사 뒤에 붙인다(검사 대상에서 제외).
+    critic_overclaims = _overclaim_audit(critic_output_json)
     critic_output_json["scorecard"] = scorecard
     critic_output_json["decision_rule"] = decision_rule
+    critic_output_json["_overclaim_phrases"] = critic_overclaims
 
     critic_run = AgentRun(
         agent_run_id=str(uuid.uuid4()),
@@ -1245,7 +1295,7 @@ def critic_node(state: VentureScoutState) -> dict:
         grounded_on=grounded_on,
         output_json=critic_output_json,
         groundedness_score=1.0 if grounded_on else 0.0,
-        overclaim_flag=False,
+        overclaim_flag=bool(critic_overclaims),
         status="done",
     )
 
