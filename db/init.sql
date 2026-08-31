@@ -2,9 +2,13 @@
 -- 원칙: 계약 strict / payload JSONB / pgvector 단일 스토어
 -- 임베딩 차원: 768 (PatentSBERTa·KorPatBERT). e5 폴백은 1024로 변경.
 --
--- 이 파일은 AWS RDS(venturescout-db.ctmg0gka282c.ap-northeast-1.rds.amazonaws.com)에
--- 실제로 적용되어 있는 스키마를 읽기 전용으로 조회해 그대로 옮긴 것이다(db/introspect_schema.py).
--- RDS는 이 파일로 재생성된 적이 없다 — 둘이 다시 어긋나면 RDS 쪽을 기준으로 이 파일을 고친다.
+-- 원래 이 파일은 공용 AWS RDS의 실제 스키마를 조회해 그대로 옮긴 사본이었고(db/introspect_schema.py),
+-- 어긋나면 RDS를 기준으로 이 파일을 고쳤다.
+-- 지금은 RDS 인스턴스가 삭제돼(DNS 미해석) **이 파일이 스키마의 유일한 정본**이다.
+-- docker compose가 로컬 db 최초 기동 시 자동 실행한다 — docs/local-setup.md 참조.
+--
+-- 남은 RDS 시절 흔적: patent_claims·claim_limitations의 중복 UNIQUE 각 2건.
+-- 기능에 영향은 없어 그대로 뒀다(제거해도 무방).
 
 CREATE EXTENSION IF NOT EXISTS vector;
 CREATE EXTENSION IF NOT EXISTS pgcrypto;   -- gen_random_uuid() — RDS는 uuid-ossp 대신 이걸 사용
@@ -109,8 +113,12 @@ CREATE TABLE agent_runs (
     status             varchar DEFAULT 'pending',
     created_at         timestamptz DEFAULT now()
 );
+-- 'alternatives'는 ⑧ 대안 제안 에이전트(shared.contracts.AgentName)가 쓰는 값이다.
+-- 공용 RDS에는 끝내 반영되지 못해, kill 판정 시 alternatives run의 INSERT가 이 제약에
+-- 걸려 실패했다 — try_persist_agent_run()이 예외를 경고 로그로 삼켜서 그래프는 정상으로
+-- 보이고 DB에만 안 남는 조용한 실패였다. 로컬 스키마에서는 처음부터 포함한다.
 ALTER TABLE agent_runs ADD CONSTRAINT agent_runs_agent_name_check
-    CHECK (agent_name IN ('market', 'competitor', 'tech', 'ip', 'bm', 'critic', 'structuring'));
+    CHECK (agent_name IN ('market', 'competitor', 'tech', 'ip', 'bm', 'critic', 'structuring', 'alternatives'));
 ALTER TABLE agent_runs ADD CONSTRAINT agent_runs_depth_check
     CHECK (depth IN ('full', 'light'));
 ALTER TABLE agent_runs ADD CONSTRAINT agent_runs_confidence_check
