@@ -48,6 +48,16 @@ def retrieve(
         top_k=k * 2,
         source_types=source_types,
     )
+
+    # stance를 rerank **이전에** 붙인다. reranker의 contradiction 축이 이 값을 읽는데,
+    # documents 검색 결과에는 stance 키가 없어 지금까지 항상 neutral로 떨어졌다
+    # (ADR-045: 축이 상수라 순위에 아무 영향도 못 줬다).
+    from pipeline.stance import get_tagger      # 순환 import 방지용 지연 import
+
+    stances = get_tagger().tag(query, [str(item.get("clean_text") or "") for item in raw])
+    for item, stance in zip(raw, stances):
+        item["stance"] = stance
+
     ranked = reranker.rerank(raw, prefer_contradicting=True, top_k=k)
 
     return [
