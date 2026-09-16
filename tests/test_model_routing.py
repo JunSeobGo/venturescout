@@ -89,3 +89,40 @@ def test_invoke_uses_selected_tier_model_id(monkeypatch):
     assert output["summary"] == "ok"
     assert output["llm_model_id"] == "sonnet-selected"
     assert output["llm_succeeded"] is True
+
+
+# ── 티어 분리 (haiku 추가 이후) ───────────────────────────────────────────────
+# _model_id_for_tier가 인자를 무시하고 항상 sonnet을 돌려주던 버그가 있었다.
+# 티어가 하나뿐일 땐 드러나지 않았으므로, 두 번째 티어를 넣은 지금 고정한다.
+
+def test_haiku_tier_resolves_to_its_own_model_id(monkeypatch):
+    monkeypatch.setenv("BEDROCK_SONNET_MODEL_ID", "sonnet-test")
+    monkeypatch.setenv("BEDROCK_HAIKU_MODEL_ID", "haiku-test")
+
+    assert load_claude_config("sonnet").model_id == "sonnet-test"
+    assert load_claude_config("haiku").model_id == "haiku-test"
+
+
+def test_legacy_bedrock_model_id_does_not_leak_into_haiku(monkeypatch):
+    """티어 구분 없던 시절의 BEDROCK_MODEL_ID가 haiku를 sonnet으로 새게 하면 안 된다."""
+    monkeypatch.delenv("BEDROCK_SONNET_MODEL_ID", raising=False)
+    monkeypatch.delenv("BEDROCK_HAIKU_MODEL_ID", raising=False)
+    monkeypatch.setenv("BEDROCK_MODEL_ID", "legacy-sonnet")
+
+    assert load_claude_config("sonnet").model_id == "legacy-sonnet"
+    assert load_claude_config("haiku").model_id != "legacy-sonnet"
+
+
+def test_agent_tier_overrides_from_env(monkeypatch):
+    """A/B 실험은 코드 수정이 아니라 환경변수로 한다."""
+    monkeypatch.setenv("AGENT_TIER_OVERRIDES", "market=haiku, tech=haiku")
+
+    assert model_tier_for_agent("market") == "haiku"
+    assert model_tier_for_agent("tech") == "haiku"
+    assert model_tier_for_agent("critic") == "sonnet"   # 지정 안 한 노드는 그대로
+
+
+def test_tier_override_ignores_unknown_tier(monkeypatch):
+    """오타 하나로 실행이 죽는 것보다 기본값으로 도는 편이 안전하다."""
+    monkeypatch.setenv("AGENT_TIER_OVERRIDES", "market=hauki")
+    assert model_tier_for_agent("market") == "sonnet"
