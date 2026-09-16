@@ -10,7 +10,9 @@ services:
       POSTGRES_USER: vs
       POSTGRES_PASSWORD: vs_local     # 로컬 전용. 외부 노출 안 함
     ports:
-      - "5432:5432"
+      # 호스트 5432는 로컬 설치형 PostgreSQL이 선점하는 경우가 많아 5433으로 뺀다.
+      # 컨테이너 내부는 그대로 5432 — api 컨테이너에서는 db:5432로 붙는다.
+      - "5433:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
       # 최초 기동 시 1회 자동 실행(데이터 볼륨이 비어 있을 때만)

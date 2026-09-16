@@ -44,6 +44,10 @@ docker compose up -d db
 docker compose logs -f db     # "database system is ready to accept connections" 대기
 ```
 
+> **포트는 호스트 5433**이다(컨테이너 내부는 5432). 로컬에 PostgreSQL이 설치돼 있으면
+> 5432를 선점해 컨테이너가 아니라 그쪽으로 붙는다 — 실제로 이 환경에서 발생했다
+> (`postgresql-x64-18` 서비스). 컨테이너끼리는 `db:5432`로 통신하므로 영향 없다.
+
 `db/init.sql`이 **볼륨이 비어 있을 때만 1회** 자동 실행된다(9테이블 + pgvector/tsvector 인덱스).
 스키마를 다시 깔려면 볼륨부터 지운다:
 
@@ -60,8 +64,8 @@ docker compose down -v        # ⚠️ pgdata 볼륨 삭제 — 적재한 데이
 # 컨테이너 안에서 실행할 때 (호스트명 db)
 DATABASE_URL=postgresql://vs:vs_local@db:5432/venturescout
 
-# 호스트에서 직접 실행할 때 (포트 5432 매핑)
-DATABASE_URL=postgresql://vs:vs_local@localhost:5432/venturescout
+# 호스트에서 직접 실행할 때 (컨테이너 5432 -> 호스트 5433 매핑)
+DATABASE_URL=postgresql://vs:vs_local@localhost:5433/venturescout
 ```
 
 ### 3. 시드 270건 적재
@@ -137,6 +141,8 @@ docker compose run --rm \
 
 | 증상 | 원인 / 조치 |
 |---|---|
+| 접속 시 `UnicodeDecodeError: 'utf-8' codec can't decode byte ...` | **포트 충돌.** 로컬 설치형 PostgreSQL이 5432를 잡고 있어 그쪽으로 붙었고, 인증 실패 메시지가 한국어 로케일이라 psycopg2가 디코딩하다 터진 것. 호스트 포트는 **5433**을 써라 (`netstat -ano \| findstr :5432`로 점유 확인) |
+| `python -m pipeline.indexer`가 출력 없이 exit 0, 임베딩 0건 | 과거 `indexer.py`에 `__main__` 블록이 없어 임포트만 되고 끝났다. 현재는 진입점이 있다 — 그래도 재현되면 모듈을 최신으로 받았는지 확인 |
 | `getaddrinfo failed` (호스트 `venturescout-db...`) | 죽은 RDS를 보고 있다. `DATABASE_URL`을 안 넘겼거나 오타 |
 | `could not translate host name "db"` | 호스트에서 직접 실행 중인데 컨테이너용 DSN을 썼다. `localhost`로 바꿔라 |
 | `relation "documents" does not exist` | `init.sql`이 안 돌았다. 볼륨이 이미 있었을 가능성 → `docker compose down -v` 후 재기동 |
@@ -146,12 +152,40 @@ docker compose run --rm \
 
 ## 알려진 제약
 
-- **특허 코퍼스 없음** — H4/H5는 재현 불가. BigQuery 재수집에는 GCP 계정과 실비가 필요하다
+- **특허 코퍼스 없음** — 기본 상태에서는 H4/H5 재현 불가. 채우려면 아래 "특허 코퍼스(선택)" 참조
 - **LLM 없음** — `agents/graph.py` 전체 실행 불가. `RETRIEVAL=live`는 DB만 요구하므로 검색은 된다
 - **`.env`의 AWS 항목은 죽은 값** — 지우지 않고 뒀다. 새 자격증명이 생기면 그대로 쓸 수 있다
 
-## ⚠️ 이 문서는 미검증이다
+## 검증 기록
 
-작성 시점에 Docker 데몬이 꺼져 있어 **실행으로 확인하지 못했다.** 절차는 코드의 실제
-접속 경로(`config.db_dsn` 우선순위, `load_seed.connect_db()`, `pipeline.indexer`)를 읽고
-구성했지만, 처음 돌릴 때 어긋나는 지점이 있을 수 있다. 확인되면 이 문서를 고쳐라.
+2026-09-16, 이 절차대로 1~5단계를 실제로 실행해 확인했다.
+
+```
+9테이블 + 확장 4종(vector/pgcrypto/pg_trgm/plpgsql) + HNSW·GIN 인덱스   생성 확인
+agent_runs_agent_name_check 에 'alternatives' 포함                     확인
+시드 적재            270 / 270건
+임베딩               270 / 270건, 768차원
+HNSW 재생성          완료
+```
+
+실행 중 두 가지를 고쳤다:
+
+- **호스트 포트 5432 → 5433** — 로컬 설치형 PostgreSQL과 충돌
+- **`pipeline/indexer.py`에 `__main__` 진입점 추가** — 없어서 `python -m`이 임포트만 하고
+  조용히 끝났다. 문서 오류가 아니라 원래 있던 버그다
+
+## 특허 코퍼스 (선택)
+
+시드만으로는 H4(tech)·H5(ip)가 근거 0건이라 판정이 항상 `more_research`로 고정된다.
+특허를 채우려면 `data/collect_from_hupd.py`를 쓴다 — 원래 경로였던 BigQuery는 GCP
+계정이 필요했지만, HUPD(HuggingFace 공개 데이터셋)는 가입 없이 받을 수 있다.
+
+```bash
+pip install datasets
+python -m data.collect_from_hupd --cpc G06Q30 --limit 800
+python -m data.collect_from_hupd --load data/patents/hupd_G06Q30.json
+python -m pipeline.indexer        # claim_limitations 임베딩까지
+```
+
+HUPD는 2004~2014 **출원**이라 원래 범위(2021~2024 등록특허)와 다르다.
+수치를 인용할 때 데이터 범위를 함께 밝힐 것.
