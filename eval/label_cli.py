@@ -103,7 +103,11 @@ def run(path: pathlib.Path, top: int, redo: bool) -> None:
         if query["query_id"] != seen_query:
             seen_query = query["query_id"]
             print("\n" + "=" * 70)
-            print(f"[질문] {query['query']}")
+            # 코퍼스가 영문이라 한글요약이 있으면 그쪽을 먼저 보여준다
+            # (`eval/translate_labels.py`가 채운다). 없으면 원문으로 떨어진다.
+            print(f"[질문] {query.get('_질문_한글') or query['query']}")
+            if query.get("_질문_한글"):
+                print(f"       원문: {query['query']}")
             print(f"       축: {query.get('axis')}")
             print("=" * 70)
 
@@ -116,7 +120,10 @@ def run(path: pathlib.Path, top: int, redo: bool) -> None:
 
         print(f"\n({i + 1}/{len(todo)})  검색점수 {lab.get('_relevance_score')}   "
               f"[{lab.get('_source_type')}]")
-        print(f"  {(lab.get('_excerpt') or '')[:230]}")
+        if lab.get("_한글요약"):
+            print(f"  {lab['_한글요약']}")
+        else:
+            print(f"  {(lab.get('_excerpt') or '')[:230]}")
         print(f"  LLM 초벌: {hint}")
 
         try:
