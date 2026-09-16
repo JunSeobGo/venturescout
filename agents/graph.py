@@ -19,6 +19,7 @@
 from __future__ import annotations
 
 import json
+import os
 import time
 import uuid
 from typing import Any, Literal
@@ -30,6 +31,7 @@ from agents.llm import (
     current_model_name,
     invoke_claude_json,
     model_tier_for_agent,
+    reset_usage,
 )
 from agents.input_validation import InsufficientInputError, validate_input_detail
 from agents.logger import (
@@ -431,6 +433,11 @@ def structuring_node(state: VentureScoutState) -> dict:
     # 여기서 만든 idea와 hypotheses가 뒤쪽 모든 agent의 공통 입력이 된다.
     start_time = time.time()
     log_stage(logger, "1️⃣", "Structuring (구조화)")
+
+    # 비용/호출 상한은 잡 단위다. 그래프 진입점에서 누적을 0으로 되돌리지 않으면
+    # 이전 잡의 사용량이 남아 두 번째 잡이 즉시 상한에 걸린다.
+    # (동시 다발 /analyze에서는 전역 누적이 섞이므로 job 스코프 분리가 필요 — ADR open)
+    reset_usage()
 
     try:
         job_id = state["job_id"]
@@ -1449,6 +1456,13 @@ def build_graph():
     )
     graph.add_edge("alternatives", END)
     return graph.compile()
+
+
+# LangGraph가 한 실행에서 밟을 수 있는 최대 super-step 수.
+# 현재 그래프는 structuring → 병렬 5 → critic → (kill이면) alternatives 로
+# 최대 4 super-step이면 끝난다. 조건부 엣지가 늘어 사이클이 생기면 무한 루프가
+# 될 수 있으므로 넉넉하되 유한한 값으로 잠근다.
+GRAPH_RECURSION_LIMIT = int(os.getenv("GRAPH_RECURSION_LIMIT", "15"))
 
 
 if __name__ == "__main__":

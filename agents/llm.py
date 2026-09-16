@@ -38,6 +38,41 @@ def reset_usage() -> None:
         _USAGE.update(input_tokens=0, output_tokens=0, calls=0)
 
 
+class BudgetExceeded(RuntimeError):
+    """잡 하나가 정해둔 비용/호출 상한을 넘었을 때. 다음 LLM 호출을 막는다."""
+
+
+# ── 실행 상한 (guardrail) ──────────────────────────────────────────────────
+# 지금까지는 usage를 **재기만 하고 막지는 않았다**. 루프 버그나 재시도 폭주가
+# 나면 그대로 과금된다. AWS 계정이 개인 명의로 넘어와 실제 위험이 됐으므로
+# 호출 관문(invoke_claude_json)에서 선제적으로 차단한다.
+#
+# 분석 1건 실측이 약 $0.40(7~8콜)이므로 기본값은 그 3배 정도로 잡아 정상 실행은
+# 막지 않으면서 폭주만 잡는다. .env로 조정한다.
+MAX_COST_USD_PER_JOB = float(os.getenv("MAX_COST_USD_PER_JOB", "1.5"))
+MAX_LLM_CALLS_PER_JOB = int(os.getenv("MAX_LLM_CALLS_PER_JOB", "40"))
+
+
+def _check_budget() -> None:
+    """호출 직전 상한 확인. 넘었으면 BudgetExceeded를 올려 더 못 쓰게 한다."""
+    with _USAGE_LOCK:
+        calls = _USAGE["calls"]
+        cost = (
+            _USAGE["input_tokens"] / 1_000_000 * PRICE_INPUT_PER_MTOK
+            + _USAGE["output_tokens"] / 1_000_000 * PRICE_OUTPUT_PER_MTOK
+        )
+    if MAX_LLM_CALLS_PER_JOB and calls >= MAX_LLM_CALLS_PER_JOB:
+        raise BudgetExceeded(
+            f"LLM 호출 상한 초과: {calls}회 >= {MAX_LLM_CALLS_PER_JOB}회. "
+            "MAX_LLM_CALLS_PER_JOB으로 조정한다."
+        )
+    if MAX_COST_USD_PER_JOB and cost >= MAX_COST_USD_PER_JOB:
+        raise BudgetExceeded(
+            f"비용 상한 초과: ${cost:.4f} >= ${MAX_COST_USD_PER_JOB}. "
+            "MAX_COST_USD_PER_JOB으로 조정한다."
+        )
+
+
 def usage_snapshot() -> dict:
     """현재까지 누적된 토큰과 그로부터 계산한 USD 비용을 반환한다."""
     with _USAGE_LOCK:
@@ -223,6 +258,7 @@ def invoke_claude_json(
     구조화처럼 결정성이 중요한 호출은 0을 넘겨 검색 쿼리 변동을 줄인다.
     """
 
+    _check_budget()          # 호출 전에 상한부터 확인한다(재기만 하지 않고 막는다)
     config = load_claude_config(model_tier)
     _require_bedrock(config)
     call_temperature = config.temperature if temperature is None else temperature

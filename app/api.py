@@ -20,8 +20,9 @@ from fastapi import FastAPI
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from agents.graph import build_graph
+from agents.graph import GRAPH_RECURSION_LIMIT, build_graph
 from agents.input_validation import InsufficientInputError, validate_input_detail
+from agents.llm import BudgetExceeded, usage_snapshot
 
 app = FastAPI(title="VentureScout API")
 
@@ -154,7 +155,11 @@ async def analyze(req: AnalyzeRequest) -> StreamingResponse:
             "idea": {"raw_input": req.idea},
         }
         # B(persistence)는 RunnableConfig.configurable.job_id로 읽으므로 config에도 주입.
-        config = {"configurable": {"job_id": job_id, "idea_id": idea_id}}
+        # recursion_limit: 조건부 엣지가 사이클을 만들 경우의 무한 루프 방지(guardrail).
+        config = {
+            "configurable": {"job_id": job_id, "idea_id": idea_id},
+            "recursion_limit": GRAPH_RECURSION_LIMIT,
+        }
 
         try:
             async for ev in _graph.astream_events(init_state, version="v2", config=config):
@@ -204,6 +209,23 @@ async def analyze(req: AnalyzeRequest) -> StreamingResponse:
                 "error": str(exc),
             })
             return
+        except BudgetExceeded as exc:
+            # 비용/호출 상한에 걸린 경우. 광역 캐치보다 먼저 잡아 사용자에게
+            # "왜 멈췄는지"를 그대로 전달한다(모호한 서버 오류로 뭉뚱그리지 않는다).
+            snap = usage_snapshot()
+            await asyncio.to_thread(_finish_job, job_id, "failed", None, None)
+            yield _sse({
+                "type": "job", "status": "failed", "stage": None, "job_id": job_id,
+                "error_code": "budget_exceeded",
+                "error": str(exc),
+                "usage": {
+                    "calls": snap["calls"],
+                    "cost_usd": snap["cost_usd"],
+                    "input_tokens": snap["input_tokens"],
+                    "output_tokens": snap["output_tokens"],
+                },
+            })
+            return
         except Exception as exc:  # noqa: BLE001 — 데모용 광역 캐치 후 봉투로 보고
             await asyncio.to_thread(_finish_job, job_id, "failed", None, None)
             yield _sse({"type": "job", "status": "failed", "stage": None, "job_id": job_id,
@@ -238,6 +260,8 @@ async def analyze(req: AnalyzeRequest) -> StreamingResponse:
             "next_experiments": (critic or {}).get("next_experiments", []),
             "agent_runs": agent_runs,
             "evidence_sources": evidence_sources,
+            # 실행 1건의 실측 사용량 — 상한이 얼마나 남았는지 UI/평가가 볼 수 있게.
+            "usage": usage_snapshot(),
         })
         yield _sse({"type": "job", "status": "done", "stage": None, "job_id": job_id})
 
