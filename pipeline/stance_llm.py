@@ -56,14 +56,20 @@ def _conn():
     return conn
 
 
-def fetch_targets(conn) -> list[dict]:
+def fetch_targets(conn, source_types: list[str] | None = None) -> list[dict]:
     """태깅 대상 (문서, 축) 쌍을 만든다."""
+    sql = (
+        "SELECT document_id, source_type, left(clean_text, %s) AS text "
+        "FROM documents WHERE clean_text IS NOT NULL"
+    )
+    params: list = [DOC_CHARS]
+    if source_types:
+        sql += " AND source_type = ANY(%s)"
+        params.append(list(source_types))
+    sql += " ORDER BY source_type, document_id"
+
     with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
-        cur.execute(
-            "SELECT document_id, source_type, left(clean_text, %s) AS text "
-            "FROM documents WHERE clean_text IS NOT NULL ORDER BY source_type, document_id",
-            (DOC_CHARS,),
-        )
+        cur.execute(sql, params)
         rows = cur.fetchall()
     return [
         {"document_id": str(r["document_id"]), "axis": axis, "text": r["text"]}
@@ -114,10 +120,20 @@ def main() -> None:
         "--tag-suffix", default="",
         help="meta 키에 붙일 꼬리표(예: _haiku). 비교 실행이 기존 결과를 덮지 않게 한다",
     )
+    p.add_argument(
+        "--axis", action="append", choices=sorted(AXIS_STATEMENTS),
+        help="이 축만 태깅한다(여러 번 지정 가능). 전체를 돌리기 전 소량 검증용",
+    )
+    p.add_argument(
+        "--source-type", action="append", choices=sorted(SCOPE),
+        help="이 source_type만 태깅한다(여러 번 지정 가능)",
+    )
     args = p.parse_args()
 
     conn = _conn()
-    targets = fetch_targets(conn)
+    targets = fetch_targets(conn, source_types=args.source_type)
+    if args.axis:
+        targets = [t for t in targets if t["axis"] in args.axis]
     if args.limit:
         targets = targets[: args.limit]
 
