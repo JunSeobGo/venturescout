@@ -57,6 +57,20 @@ QUERIES: list[dict] = [
         "query": "Global payroll platforms compete on multi-country compliance coverage.",
         "source_types": ["seed_competitor"],
     },
+    # 특허 축(H4 기술 / H5 IP). HUPD 코퍼스를 적재한 뒤에만 의미가 있다
+    # — 시드만 있는 상태에서는 0건이 나온다(data/collect_from_hupd.py 참조).
+    {
+        "query_id": "patent-h4",
+        "axis": "technology",
+        "query": "A system that retrieves maintenance records and recommends repair procedures.",
+        "source_types": ["patent"],
+    },
+    {
+        "query_id": "patent-h5",
+        "axis": "ip",
+        "query": "Recommending items to a user based on transaction history and similarity scoring.",
+        "source_types": ["patent"],
+    },
 ]
 
 

@@ -9,18 +9,13 @@ parse_limitations)와 3테이블 적재(save_to_db)는 `load_from_s3.py`를 그�
 documents / patent_claims / claim_limitations를 채우는 방식은 종전과 동일하다.
 
 사용:
-    # 1) 받아서 JSON으로 저장 (DB 불필요)
     python -m data.collect_from_hupd --cpc G06Q30 --limit 800
-
-    # 2) 저장한 JSON을 DB에 적재
     python -m data.collect_from_hupd --load data/patents/hupd_G06Q30.json
 
-    # 3) 받자마자 바로 적재
-    python -m data.collect_from_hupd --cpc G06Q30 --limit 800 --load-now
-
 주의:
-- `datasets` 라이브러리가 필요하다: pip install datasets
-- HUPD 전체는 125GB다. 날짜 구간을 좁혀 필요한 만큼만 받는다(기본 2개월).
+- `datasets.load_dataset("HUPD/hupd", trust_remote_code=True)` 경로는 쓰지 않는다.
+  datasets 3.x부터 커스텀 로딩 스크립트 지원이 제거돼 동작하지 않기 때문이다.
+  대신 tar.gz를 직접 받아 안의 JSON을 스트리밍으로 훑는다(메모리 상주 없음).
 - HUPD는 2004~2014 **출원**이다. 원래 프로젝트는 2021~2024 등록특허였으므로
   범위가 다르다 — 결과를 인용할 때 반드시 데이터 범위를 함께 밝힐 것.
 """
@@ -30,6 +25,7 @@ import argparse
 import json
 import pathlib
 import sys
+import tarfile
 
 # 청구항 분해·적재는 기존 로직 재사용 (출처만 다르고 처리는 같다)
 from data.load_from_s3 import save_to_db
@@ -45,16 +41,16 @@ FIELD_MAP = {
     "main_cpc_label": "cpc_code",
 }
 
+SAMPLE_ARCHIVE = "data/sample-jan-2016.tar.gz"   # 370MB. 연도별은 2.5~5GB라 과하다
 DEFAULT_OUT = pathlib.Path("data/patents")
 
 
-def _require_datasets():
+def _require_hf():
     try:
-        from datasets import load_dataset  # noqa: F401
+        from huggingface_hub import hf_hub_download  # noqa: F401
     except ImportError:
         sys.exit(
-            "datasets 라이브러리가 없다.\n"
-            "  pip install datasets\n"
+            "huggingface_hub 라이브러리가 없다. pip install huggingface_hub . "
             "설치가 부담되면 --load 로 이미 받아둔 JSON만 적재할 수 있다."
         )
 
@@ -71,40 +67,48 @@ def to_row(record: dict) -> dict | None:
     return row
 
 
-def fetch(cpc_prefix: str, start: str, end: str, limit: int) -> list[dict]:
-    """HUPD에서 날짜 구간을 받아 CPC 접두사로 거른다."""
-    _require_datasets()
-    from datasets import load_dataset
+def fetch(cpc_prefix: str, limit: int, archive: str = SAMPLE_ARCHIVE) -> list[dict]:
+    """HUPD 아카이브를 받아 압축을 풀지 않고 스트리밍으로 훑으며 CPC로 거른다."""
+    _require_hf()
+    from huggingface_hub import hf_hub_download
 
-    print(f"HUPD 로드 중 — 출원일 {start} ~ {end}")
-    print("  (최초 실행은 메타데이터 내려받느라 오래 걸린다)")
-    ds = load_dataset(
-        "HUPD/hupd",
-        name="sample",
-        trust_remote_code=True,      # HUPD는 커스텀 로딩 스크립트를 쓴다
-        train_filing_start_date=start,
-        train_filing_end_date=end,
-    )["train"]
-    print(f"  구간 내 {len(ds)}건")
+    print(f"HUPD 아카이브 내려받는 중: {archive}")
+    print("  (sample-jan-2016 기준 약 370MB. 캐시되므로 재실행은 즉시)")
+    path = hf_hub_download("HUPD/hupd", archive, repo_type="dataset")
+    print(f"  경로: {path}")
 
-    rows, skipped_cpc, skipped_empty = [], 0, 0
-    for record in ds:
-        cpc = record.get("main_cpc_label") or ""
-        if not cpc.startswith(cpc_prefix):
-            skipped_cpc += 1
-            continue
-        row = to_row(record)
-        if row is None:
-            skipped_empty += 1
-            continue
-        rows.append(row)
-        if len(rows) >= limit:
-            break
+    rows, scanned, skipped_cpc, skipped_empty = [], 0, 0, 0
+    with tarfile.open(path, "r:gz") as tar:
+        for member in tar:
+            if not member.isfile() or not member.name.endswith(".json"):
+                continue
+            scanned += 1
+            fh = tar.extractfile(member)
+            if fh is None:
+                continue
+            try:
+                record = json.load(fh)
+            except Exception:
+                continue
 
-    print(f"  CPC {cpc_prefix} 매칭 {len(rows)}건 "
+            cpc = record.get("main_cpc_label") or ""
+            if not cpc.startswith(cpc_prefix):
+                skipped_cpc += 1
+                continue
+            row = to_row(record)
+            if row is None:
+                skipped_empty += 1
+                continue
+            rows.append(row)
+            if len(rows) % 50 == 0:
+                print(f"  ... {len(rows)}건 수집 (훑은 파일 {scanned})")
+            if len(rows) >= limit:
+                break
+
+    print(f"  훑음 {scanned} / CPC {cpc_prefix} 매칭 {len(rows)}건 "
           f"(CPC 불일치 {skipped_cpc} / 청구항 없음 {skipped_empty})")
     if not rows:
-        print("  ⚠️  0건이다. --cpc 를 넓히거나(G06Q) 날짜 구간을 늘려라.")
+        print("  경고: 0건이다. --cpc 를 넓혀라 (예: G06Q)")
     return rows
 
 
@@ -124,21 +128,20 @@ def main() -> None:
     p = argparse.ArgumentParser(description="HUPD 특허 수집 (BigQuery 대체)")
     p.add_argument("--cpc", default="G06Q30",
                    help="CPC 접두사. 기본 G06Q30(전자상거래). 넓히려면 G06Q")
-    p.add_argument("--start", default="2014-01-01", help="출원일 시작")
-    p.add_argument("--end", default="2014-02-28", help="출원일 끝")
+    p.add_argument("--archive", default=SAMPLE_ARCHIVE,
+                   help="HUPD 아카이브 경로. 기본은 sample-jan-2016(370MB)")
     p.add_argument("--limit", type=int, default=800, help="최대 수집 건수")
     p.add_argument("--out", type=pathlib.Path, default=None, help="JSON 출력 경로")
     p.add_argument("--load", type=pathlib.Path, default=None,
                    help="수집 없이 기존 JSON만 DB에 적재")
-    p.add_argument("--load-now", action="store_true",
-                   help="수집 직후 바로 DB 적재")
+    p.add_argument("--load-now", action="store_true", help="수집 직후 바로 DB 적재")
     args = p.parse_args()
 
     if args.load:
         load(args.load)
         return
 
-    rows = fetch(args.cpc, args.start, args.end, args.limit)
+    rows = fetch(args.cpc, args.limit, args.archive)
     if not rows:
         return
 
@@ -148,7 +151,7 @@ def main() -> None:
     if args.load_now:
         save_to_db(rows)
     else:
-        print(f"\nDB 적재: python -m data.collect_from_hupd --load {out}")
+        print(f"DB 적재: python -m data.collect_from_hupd --load {out}")
 
 
 if __name__ == "__main__":
