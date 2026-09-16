@@ -188,4 +188,15 @@ def evaluate_retrieval(
 
 
 if __name__ == "__main__":
-    print(json.dumps(evaluate_retrieval(), ensure_ascii=False, indent=2))
+    import argparse
+
+    _p = argparse.ArgumentParser(description="검색 품질 지표 계산")
+    _p.add_argument("--path", type=pathlib.Path, help="라벨셋 경로 (기본: DEFAULT_LABELSET)")
+    _p.add_argument("-k", type=int, default=DEFAULT_K, help=f"상위 몇 건을 볼지 (기본 {DEFAULT_K})")
+    _p.add_argument("--summary", action="store_true", help="per_query를 빼고 요약만")
+    _args = _p.parse_args()
+
+    _result = evaluate_retrieval(_args.path, _args.k)
+    if _args.summary:
+        _result = {k: v for k, v in _result.items() if k != "per_query"}
+    print(json.dumps(_result, ensure_ascii=False, indent=2))
