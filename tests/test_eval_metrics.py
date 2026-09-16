@@ -147,3 +147,56 @@ def test_retrieval_metrics_reports_reason_when_labelset_missing(monkeypatch):
     result = harness.retrieval_metrics()
     assert result["precision_at_k"] is None
     assert "라벨셋 없음" in result["reason"]
+
+
+# ── 순위 기반 지표 (Recall@K / MRR / NDCG@K) ─────────────────────────────────
+
+def test_rank_metrics_all_hits():
+    """top-3이 전부 정답이면 precision=1, recall=1, MRR=1, NDCG=1."""
+    m = labelset._rank_metrics(["a", "b", "c"], {"a", "b", "c"})
+    assert m == {
+        "precision_at_k": 1.0,
+        "recall_at_k_pooled": 1.0,
+        "reciprocal_rank": 1.0,
+        "ndcg_at_k": 1.0,
+    }
+
+
+def test_rank_metrics_no_hits():
+    m = labelset._rank_metrics(["x", "y"], {"a"})
+    assert m["precision_at_k"] == 0.0
+    assert m["recall_at_k_pooled"] == 0.0
+    assert m["reciprocal_rank"] == 0.0
+    assert m["ndcg_at_k"] == 0.0
+
+
+def test_reciprocal_rank_uses_first_hit_position():
+    """첫 정답이 3등이면 RR = 1/3."""
+    m = labelset._rank_metrics(["x", "y", "a", "b"], {"a", "b"})
+    assert m["reciprocal_rank"] == round(1 / 3, 3)
+
+
+def test_recall_counts_missed_relevant_docs():
+    """정답 4개 중 top-2에 1개만 들어오면 recall = 0.25."""
+    m = labelset._rank_metrics(["a", "x"], {"a", "b", "c", "d"})
+    assert m["recall_at_k_pooled"] == 0.25
+    assert m["precision_at_k"] == 0.5     # 보여준 2건 중 1건이 정답
+
+
+def test_ndcg_rewards_higher_ranked_hits():
+    """같은 개수라도 정답이 위에 있을수록 NDCG가 높아야 한다."""
+    top = labelset._rank_metrics(["a", "x", "y"], {"a"})["ndcg_at_k"]
+    bottom = labelset._rank_metrics(["x", "y", "a"], {"a"})["ndcg_at_k"]
+    assert top > bottom
+    assert top == 1.0        # 1등이 정답이면 이상적 배치
+
+
+def test_recall_is_none_when_nothing_labeled_relevant():
+    """정답 미라벨이면 0.0이 아니라 None — 0.0은 '다 놓쳤다'로 오해된다."""
+    m = labelset._rank_metrics(["a", "b"], set())
+    assert m["recall_at_k_pooled"] is None
+
+
+def test_mean_skips_none_and_returns_none_when_empty():
+    assert labelset._mean([1.0, None, 0.5]) == 0.75
+    assert labelset._mean([None, None]) is None

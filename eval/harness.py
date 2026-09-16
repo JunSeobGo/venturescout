@@ -6,8 +6,11 @@ Track D — 평가 하네스 (ADR-019: process 기반, outcome 정답 없음).
 
 실 LLM(Bedrock) 연결 후 — graph는 비결정적이므로 1회 측정으론 'Critic 효능'인지
 '그 회의 우연'인지 구분 불가. 그래서 같은 idea를 N회 ON/OFF 돌려 **분포로 집계**한다(ADR-030).
-  - 지금 계산: JSON Validity·Groundedness·Overclaim·latency·cost_usd(실측 토큰)·Critic ON/OFF 분포
-  - 아직 TODO: precision_at_k·contradiction_coverage(=정답 라벨셋 필요)
+  - 지금 계산: JSON Validity·Groundedness·Overclaim(실측)·latency·cost_usd(실측 토큰)·
+    Critic ON/OFF 분포 / 검색 지표 precision@k·recall@k·MRR·NDCG@k·contradiction_coverage
+  - 검색 지표는 정답 라벨셋을 읽어 계산한다(eval/labelset.py). 라벨이 비어 있으면
+    조용한 None이 아니라 사유를 담아 반환한다.
+  - 아직 미구현: Answer/Citation Accuracy, latency p50/p95/p99, Task Success Rate
 
 graph.py는 건드리지 않는다. Critic OFF는 여기서 critic 없는 그래프를 따로 배선해 만든다.
 """
@@ -276,6 +279,10 @@ def retrieval_metrics(k: int = 5) -> dict:
         "k": result["k"],
         "queries": result["queries"],
         "precision_at_k": result["precision_at_k"],
+        # 풀 기준 recall — 라벨이 검색 상위 N건에만 달려 있어 절대값이 아니다
+        "recall_at_k_pooled": result["recall_at_k_pooled"],
+        "mrr": result["mrr"],
+        "ndcg_at_k": result["ndcg_at_k"],
         "contradiction_coverage": result["contradiction_coverage"],
         "unlabeled_in_topk": result["unlabeled_in_topk"],
     }

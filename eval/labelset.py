@@ -17,6 +17,7 @@ ADR-019/029에서 `retrieval_metrics`가 `None + TODO`로 남아 있던 자리�
 from __future__ import annotations
 
 import json
+import math
 import pathlib
 from typing import Any
 
@@ -79,6 +80,44 @@ def _retrieve_ids(query: dict[str, Any], k: int) -> list[str]:
     return [item.document_id for item in items]
 
 
+def _dcg(gains: list[float]) -> float:
+    """할인 누적 이득. 상위에 있을수록 가중치가 크다(log2(rank+1)로 나눈다)."""
+    return sum(g / math.log2(i + 2) for i, g in enumerate(gains))
+
+
+def _rank_metrics(retrieved: list[str], relevant: set[str]) -> dict[str, Any]:
+    """순위를 고려한 지표 묶음. 이진 관련도(relevant 여부)를 가정한다.
+
+    - precision@k : top-k 중 맞은 비율. "보여준 것이 쓸모 있었나"
+    - recall@k    : 정답 중 top-k에 들어온 비율. "놓친 게 없나"
+      ⚠️ **풀(pool) 기준이다.** 라벨은 검색 상위 10건에만 달려 있으므로
+      "코퍼스 전체의 정답"을 알 수 없다. 절대 recall이 아니라 풀 안에서의
+      recall이며, 실제 값보다 높게 나온다. 해석할 때 반드시 감안할 것.
+    - MRR         : 첫 정답이 몇 등에 있었나(1/rank). 상위 노출 품질.
+    - NDCG@k      : 정답이 상위에 몰려 있을수록 1에 가깝다.
+    """
+    hits = [1.0 if doc_id in relevant else 0.0 for doc_id in retrieved]
+    n_hit = int(sum(hits))
+
+    first = next((i for i, h in enumerate(hits) if h), None)
+    ideal = sorted(hits, reverse=True)
+    idcg = _dcg(ideal)
+
+    return {
+        "precision_at_k": round(n_hit / len(retrieved), 3) if retrieved else 0.0,
+        # 정답이 하나도 라벨링되지 않았으면 0.0이 아니라 None — 0.0은 "다 놓쳤다"로 읽힌다
+        "recall_at_k_pooled": round(n_hit / len(relevant), 3) if relevant else None,
+        "reciprocal_rank": round(1.0 / (first + 1), 3) if first is not None else 0.0,
+        "ndcg_at_k": round(_dcg(hits) / idcg, 3) if idcg else 0.0,
+    }
+
+
+def _mean(values: list[float]) -> float | None:
+    """None을 뺀 평균. 전부 None이면 None(0.0으로 뭉개지 않는다)."""
+    vals = [v for v in values if v is not None]
+    return round(sum(vals) / len(vals), 3) if vals else None
+
+
 def evaluate_retrieval(
     path: str | pathlib.Path | None = None,
     k: int = DEFAULT_K,
@@ -100,14 +139,13 @@ def evaluate_retrieval(
         retrieved = _retrieve_ids(query, k)
         labeled_ids = set(query["labels"])
 
-        hits = [doc_id for doc_id in retrieved if doc_id in relevant]
         unlabeled = [doc_id for doc_id in retrieved if doc_id not in labeled_ids]
 
         per_query.append({
             "query_id": query["query_id"],
             "axis": query.get("axis"),
             # 분모는 k가 아니라 min(k, 검색된 수) — DB에 문서가 k개보다 적을 수 있다.
-            "precision_at_k": round(len(hits) / len(retrieved), 3) if retrieved else 0.0,
+            **_rank_metrics(retrieved, relevant),
             "retrieved": len(retrieved),
             "relevant_labeled": len(relevant),
             "contradiction_hits": len(contradicting & set(retrieved)),
@@ -115,14 +153,16 @@ def evaluate_retrieval(
             "unlabeled_in_topk": len(unlabeled),
         })
 
-    precisions = [q["precision_at_k"] for q in per_query]
     contra_labeled = sum(q["contradiction_labeled"] for q in per_query)
     contra_hits = sum(q["contradiction_hits"] for q in per_query)
 
     return {
         "k": k,
         "queries": len(per_query),
-        "precision_at_k": round(sum(precisions) / len(precisions), 3) if precisions else 0.0,
+        "precision_at_k": _mean([q["precision_at_k"] for q in per_query]),
+        "recall_at_k_pooled": _mean([q["recall_at_k_pooled"] for q in per_query]),
+        "mrr": _mean([q["reciprocal_rank"] for q in per_query]),
+        "ndcg_at_k": _mean([q["ndcg_at_k"] for q in per_query]),
         # 반박 근거를 라벨링하지 않았으면 None — 0.0으로 쓰면 "못 찾았다"로 오해된다.
         "contradiction_coverage": (
             round(contra_hits / contra_labeled, 3) if contra_labeled else None
