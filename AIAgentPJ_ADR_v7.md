@@ -1,8 +1,10 @@
 # VentureScout — Architecture Decision Record (ADR)
 
 > **목적**: 이 문서 하나만 보고 작업을 이어갈 수 있도록 모든 결정·구현·레포 상태·다음 작업을 기록.
-> **버전**: v7 (v6에서 이어받음 — 검색 2단계·하네스 승격·live 인프라·mock 제거·문구개선 ADR-034~038 추가)
-> **최종 갱신**: Day 0++ (4트랙 통합 ADR-033 이후 **live+Bedrock 풀 E2E까지 동작**. 검색 2단계 최적화+근거0건 graceful ADR-034 / 하네스 N회 분포 ADR-035 / 임베더캐시·HNSW재생성·Bedrock 실연결 ADR-036 / **C의 mock 전면제거·RETRIEVAL live 강제 ADR-037**(설계 reversal) / Evidence Board 문구개선 ADR-038. integration HEAD=`0ed525a`, main 미반영.)
+> **버전**: v7 (ADR-039~044 추가 — 인프라 로컬 전환·특허 출처 교체·평가 지표·실행 상한)
+> **최종 갱신**: 2026-09-16. **부트캠프 종료로 AWS 인프라 정리됨**(자격증명 무효, RDS 삭제,
+> Bedrock 미사용). 로컬 docker + 공개 데이터셋으로 검색 계층 전 구간 재현 완료.
+> 이후 작업은 개인 미러 레포(`JunSeobGo/venturescout`)에서 단독 진행한다.
 > **레포**: https://github.com/de-ai-AIAgentPJ-team4/venturescout
 
 ---
@@ -369,6 +371,52 @@
 - **상태**: done (D, `c820e2b`).
 - **결정**: ① 환영 메시지에 **판정 4종(GO/PIVOT/KILL/MORE RESEARCH) 표·설명** 추가. ② 가설별 근거 표의 **근거 UUID → 출처 한글 건수**("고객 리뷰 1건·특허 2건"; api가 `evidence_sources` 맵 전달). ③ **깊이 칼럼 제거**. ④ 신호 **한글 통일**(LLM system 프롬프트에 "한국어로 작성" 명시 + 기본값 한글화). ⑤ **Critic 반론 구체화**(코드 기본 반론을 한글 서술형·UUID 제거, LLM role 상세 지시). ⑥ **다음 실험** 섹션에 안내문 + "누가·어떻게·뭘 보면 검증" LLM 지시. 에이전트 코드명도 한글(시장·경쟁·IP…).
 - **참고**: ②⑤는 api/ui(D)에서, ④⑤⑥의 live 품질은 graph.py LLM 프롬프트(C 소유, 합의)에서. mock은 기본값, live는 Claude가 프롬프트대로 채움.
+
+### ADR-039 — (구현) critic 프롬프트 컨텍스트 축소 + JSON compact 직렬화
+- **상태**: done (`86b3049`)
+- **맥락**: 분석 1건 input이 45~52K 토큰인데 대부분이 critic이 앞선 5노드의 `output_json`·evidence·IP 후보를 통째로 재수신하는 데서 나왔다. max_tokens 초과로 JSON이 잘려 잡이 죽는 원인이기도 했다(ADR-036 남은 위험).
+- **결정**: `_critic_*_view` 4종으로 축약 — output_json은 서술 5필드 + 노드별 상세 1~2개, evidence는 출처·입장·발췌 500자, UUID(evidence_id·candidate 5종·scorecard 목록) 전부 제외. `_json_context`는 `indent=2` → compact separators.
+- **결과**: 대표 payload 45,570자 → 18,191자(**−60.1%**). 판정은 `_decide()`가 LLM 호출 **이전에** 확정하므로 GO/PIVOT/KILL/MORE_RESEARCH는 영향 없음 — 바뀌는 건 서술뿐.
+- **미검증**: 토큰 기준 절감폭. 문자 수는 프록시다.
+
+### ADR-040 — (기각) 프롬프트 캐싱
+- **상태**: rejected
+- **맥락**: 입력 토큰이 비용의 대부분(입력 $3 vs 출력 $15지만 물량이 25배)이라 캐싱을 검토했다.
+- **결정**: **적용하지 않는다.** 두 가지가 동시에 막는다.
+    1. Claude Sonnet 4.6의 최소 캐시 prefix는 **1024 토큰**인데, 노드 간 공유되는 prefix는 system 프롬프트뿐이고 한국어 ~150 토큰이다. 미달이면 **에러 없이 조용히 캐시가 안 만들어진다**.
+    2. 분석 5노드가 **병렬**이라 캐시 항목이 읽기 가능해지기 전에 전부 요청이 나간다. prefix를 억지로 키워도 서로의 캐시를 못 읽는다.
+- **결과**: 코드를 넣어도 효과 0이므로 넣지 않았다. **이 기록이 없으면 다음 사람이 같은 걸 또 시도한다.**
+
+### ADR-041 — (구현) overclaim 실측 연결 — guardrails 죽은 코드 활성화
+- **상태**: done (`043c80a`, `e7375fa`)
+- **맥락**: `agents/guardrails.py`의 `detect_overclaim()`이 어디서도 호출되지 않는 죽은 코드였고 `overclaim_flag`는 항상 `False` 하드코딩이었다. 하네스의 `overclaim_count()`도 "grounded_on 비었는데 confidence≠low"를 셌는데 `grounded_on`이 계약상 `min_length=1`이라 **구조적으로 항상 0**이었다. README가 내세운 "근거 없는 확정적 주장 방지"가 측정된 적이 없었다.
+- **결정**: `_narrative_text()`로 서술 문자열만 추려 `detect_overclaim()`에 넣고 결과를 `overclaim_flag`·`_overclaim_phrases`에 기록. critic 자신도 같은 기준으로 검사하되 코드 생성값(scorecard·decision_rule)은 제외.
+- **⚠️ 프레이밍 정정**: "Critic ON/OFF로 overclaim **감소량** 정량화"는 성립하지 않는다. Critic은 다른 에이전트의 출력 텍스트를 다시 쓰지 않으므로 분석 5노드의 과장 표현은 양쪽이 같다. Critic이 실제로 교정하는 건 **최종 판정**이고 그건 `decision_changed`가 잡는다. 따라서 `overclaim_rate_analysis` / `overclaim_rate_critic`을 각각 관측값으로만 남긴다.
+- **남은 한계**: 탐지율이 `BANNED_CLAIMS`(정확 문자열 8종)에 전적으로 의존한다. 실측 후 표현 확장이 다음 단계.
+
+### ADR-042 — (구현) 검색 품질 지표 인프라 — precision@k / contradiction_coverage
+- **상태**: done (`d9fa05a`, `cf7696e`) / 라벨 작성 대기
+- **맥락**: ADR-019/029에서 `retrieval_metrics`가 `None + TODO`로 남아 있었다. "이 쿼리엔 이 문서가 적합"이라는 정답이 없어 계산이 불가능했다.
+- **결정**: `eval/labelset.py`(계산) + `eval/build_labelset.py`(후보 생성) + `eval/labels/`(정답셋). **에이전트와 같은 `retrieve()` 경로**를 재사용한다 — 별도 검색 코드를 두면 "하네스에서만 좋은 숫자"가 나온다. LLM을 쓰지 않아 **비용 0**.
+- **설계 판단**: 미라벨 문서를 숨기지 않고 `unlabeled_in_topk`로 함께 반환(precision 과소평가 여부를 해석 가능하게). 반박 근거 미라벨이면 `contradiction_coverage`는 `0.0`이 아니라 `None` — 0.0은 "못 찾았다"로 오해된다.
+- **결과**: 쿼리 7개 × 후보 10건 = 70건 생성, 각 문서에 한글 요약 첨부. **정답 라벨 작성이 남았다.**
+
+### ADR-043 — (구현) 특허 수집 출처 교체: BigQuery → HUPD
+- **상태**: done (`22a5175`)
+- **맥락**: 부트캠프 종료로 GCP 계정도 S3 버킷도 없어져 `collect_from_bigquery.py` → S3 → `load_from_s3.py` 경로가 전부 끊겼다. 특허 원본은 `data/raw`(.gitignore)라 레포에도 없었다 — 시그니처 기능(⑤ IP)의 코퍼스가 통째로 소실된 상태.
+- **결정**: HuggingFace 공개 데이터셋 **HUPD**로 출처만 교체한다. 가입·빌링 없이 받을 수 있다. 청구항 분해(`parse_claims`/`parse_limitations`)와 3테이블 적재(`save_to_db`)는 `load_from_s3.py`를 **그대로 재사용** — 바뀌는 건 "어디서 가져오는가"뿐이다.
+- **구현 주의**: `datasets.load_dataset(..., trust_remote_code=True)`는 쓰지 않는다. datasets 3.x부터 커스텀 로딩 스크립트 지원이 제거됐다(설치본 5.0.1). `huggingface_hub`으로 tar.gz를 직접 받아 스트리밍으로 훑는다.
+- **결과**: 26,808건 훑어 CPC `G06Q30` 220건 → 청구항 4,075 / limitation 8,122 적재, 임베딩 동기화율 1.0.
+- **트레이드오프**: HUPD는 **2004~2016 출원**이라 원래 범위(2021~2024 등록특허)와 다르다. 수치를 인용할 때 데이터 범위를 함께 밝혀야 한다. 다만 IP 중첩 분석 목적에는 이미 등록돼 효력이 있는 오래된 특허가 오히려 적합한 면이 있다.
+
+### ADR-044 — (구현) 실행 인프라 로컬 전환 + 실행 상한(guardrail)
+- **상태**: done (`bc577c1`, `2ccc14b`, `84ba4f8`)
+- **맥락**: RDS 인스턴스가 삭제되고(DNS 미해석) AWS 자격증명도 무효가 됐다. 동시에 AWS 계정이 부트캠프 공용에서 **개인 명의**로 바뀌어, 그동안 계측만 하던 토큰 사용량이 실제 금전 위험이 됐다.
+- **결정 1 (로컬화)**: ADR-031에서 제거했던 compose `db` 서비스를 pgvector 이미지로 복원. `db/init.sql`이 스키마의 **유일한 정본**이 된다. 절차는 `docs/local-setup.md`.
+- **결정 2 (상한)**: `invoke_claude_json` **본문 맨 앞**에서 `_check_budget()` — Bedrock에 요청을 보내기 전에 막아야 과금이 안 된다. `MAX_COST_USD_PER_JOB=1.5` / `MAX_LLM_CALLS_PER_JOB=40` / `GRAPH_RECURSION_LIMIT=15`. 0은 '제한 없음'. API는 `BudgetExceeded`를 광역 except보다 먼저 잡아 `error_code=budget_exceeded`와 실측 usage를 봉투로 전달한다.
+- **결과**: AWS 없이 검색 계층 전 구간 재현(시드 270 + 특허 220, 임베딩 8,342건). 실행 중 **원래 있던 버그 4건**이 드러났다 — `pipeline/indexer.py` `__main__` 부재(`python -m`이 무동작 exit 0), `eval/labelset.py` 기본 인자 조기 바인딩(테스트가 잘못된 이유로 통과), 로컬 PostgreSQL 포트 충돌, 배치 256 OOM(exit 137).
+- **남은 한계**: 사용량 누적이 전역 + lock이라 `/analyze` 동시 다발 시 잡 간 집계가 섞인다. `contextvars` 또는 job_id 스코프 분리 필요.
+
 ---
 
 ## 2. 레포 상태
@@ -505,6 +553,12 @@ docker compose up --build               # 또는 --force-recreate
       async 전환 권장. §3 C↔D 계약 #1 참조
 - [ ] **rerank·hybrid 가중치에 근거 없음** — `hybrid 0.6/0.4`, `rerank 0.4/0.3/0.1/0.2`가
       측정 없이 정해졌다. 라벨셋이 생기면 precision@k 기준으로 재조정할 것
+- [ ] **정답 라벨셋 미작성** (ADR-042) — 후보 70건은 생성됐으나 relevant/stance가 비어 있어
+      precision@k·contradiction_coverage가 아직 숫자로 나오지 않는다. 이게 Eval 전체의 선행조건
+- [ ] **사용량 누적이 전역** (ADR-044) — `/analyze` 동시 다발 시 잡 간 집계가 섞여
+      상한이 부정확해진다. `contextvars` 또는 job_id 스코프 분리 필요
+- [ ] **미측정 지표** — Recall@K·MRR·NDCG, Answer/Citation Accuracy, latency p50/p95/p99,
+      Task Success Rate. 최적화 후 실행당 비용도 미측정(문자 수 −60%만 확인)
 - [ ] DEMO_DELAY(기본 0.4s) — 배포 시 0
 - [ ] e5 폴백 시 `vector(768)→vector(1024)` 차원 변경 필요 (ADR-004)
 - [ ] 권장 3컬럼(decision·decision_summary·target_run_id) 최종 채택 여부 (ADR-017)

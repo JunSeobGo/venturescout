@@ -72,14 +72,23 @@ rerank에는 **contradiction 축(0.2)** 을 둬서 반박 근거를 의도적으
 | 항목 | 수치 |
 |---|---|
 | 에이전트 그래프 | 8노드 (구조화 → 병렬 5 → Critic → 조건부 대안) |
-| 코퍼스 | USPTO 특허(BigQuery, 2021–2024, CPC G06Q30) + 시드 60개사 |
-| **실행당 비용 (실측)** | **$0.400 – $0.434** / in 45.0–52.2K · out 17.7–18.5K 토큰 / 7–8 LLM 콜 |
+| 코퍼스 | 특허 220건 / 청구항 4,075 / claim limitation 8,122 + 시드 270건 |
+| 임베딩 | PatentSBERTa 768d, 8,342건 전량 (동기화율 1.0) |
+| 실행당 비용 | 최적화 전 **$0.400 – $0.434** (7–8 콜). 최적화 후는 **미측정** |
 | 검색 품질 개선 | relevance_score **0.16–0.21 → 0.46–0.73** |
 | 판정 캘리브레이션 | 3개 도메인 입력이 **KILL / PIVOT / PIVOT**으로 분리 (이전: 전부 KILL) |
-| Critic 컨텍스트 최적화 | **45,570 → 18,191자 (−60.1%)** |
-| 테스트 | `pytest tests/` **45 passed** |
+| Critic 컨텍스트 최적화 | **45,570 → 18,191자 (−60.1%)**, 토큰 기준은 미검증 |
+| 실행 상한 | 잡당 비용·LLM 호출·graph step 상한으로 폭주 차단 |
+| 테스트 | `pytest tests/` **66 passed** |
 
-> 비용은 Bedrock `converse` 응답의 `usage` 토큰을 누적한 실측값입니다.
+> **데이터 범위** — 특허는 HUPD(Harvard USPTO Patent Dataset) 2016년 1월 출원분에서
+> CPC `G06Q30`(전자상거래)으로 추린 220건입니다. 원래는 BigQuery Google Patents
+> 2021–2024 등록특허였으나, 부트캠프 종료로 공용 인프라(RDS·S3·GCP)가 정리되면서
+> 가입 없이 받을 수 있는 공개 데이터셋으로 출처를 바꿨습니다.
+>
+> **아직 측정하지 않은 것** — `precision@k` · `contradiction_coverage`는 계산 경로와
+> 라벨링 후보 70건까지 준비돼 있고 정답 라벨 작성이 남았습니다. latency p50/p95,
+> Answer/Citation Accuracy도 미측정입니다. 측정되지 않은 지표는 싣지 않았습니다.
 
 ---
 
@@ -140,13 +149,20 @@ rerank에는 **contradiction 축(0.2)** 을 둬서 반박 근거를 의도적으
 
 ## 7. 실행 방법
 
+**AWS 없이 검색 계층만** (로컬, 비용 0)
+
 ```bash
-cp .env.example .env        # AWS 자격증명 · RDS 접속정보
-docker compose up           # api :8000 · ui :8001 → localhost:8001
-pytest tests/               # 계약 · 판정 규칙 검증 (45 passed)
+docker compose up -d db                     # postgres + pgvector, init.sql 자동 적용
+docker compose run --rm -e DATABASE_URL=postgresql://vs:vs_local@db:5432/venturescout   api python -m data.load_seed              # 시드 270건
+docker compose run --rm -e DATABASE_URL=... api python -m pipeline.indexer --batch-size 32
+pytest tests/                               # 66 passed
 ```
 
-컨테이너 Python 3.11 표준. DB는 AWS RDS(`.env` 경유), 스키마는 `db/init.sql`.
+특허 코퍼스까지 채우려면 `python -m data.collect_from_hupd --cpc G06Q30`.
+전체 절차와 트러블슈팅은 **[docs/local-setup.md](docs/local-setup.md)**.
+
+**에이전트 전체 실행**에는 Bedrock 자격증명이 추가로 필요합니다(`.env`).
+컨테이너 Python 3.11 표준, 스키마는 `db/init.sql`.
 
 ---
 
@@ -154,7 +170,14 @@ pytest tests/               # 계약 · 판정 규칙 검증 (45 passed)
 
 **결정을 근거와 함께 남긴 것이 가장 큰 자산이었습니다.** ADR을 v1부터 v7까지 쌓으면서
 "왜 이 값인가"와 **"무엇을 기각했는가"** 를 같이 적었습니다. 프롬프트 캐싱을 기각할 때도
-근거를 남겼는데, 이게 없으면 다음 사람이 같은 걸 또 시도합니다.
+근거를 남겼는데(최소 캐시 prefix 1024토큰 미달 + 분석 5노드 병렬이라 캐시 공유 불가),
+이게 없으면 다음 사람이 같은 걸 또 시도합니다.
+
+**인프라가 사라진 뒤에도 재현 가능하게 만든 것.** 부트캠프 종료로 RDS·S3·Bedrock이
+모두 끊겼지만, 시드는 레포에 남아 있었고 특허는 공개 데이터셋으로 대체할 수 있었습니다.
+로컬 docker만으로 검색 계층 전체를 복구했고, 그 과정에서 원래 있던 버그 4건
+(`indexer` 진입점 부재, 라벨셋 기본값 바인딩으로 테스트가 잘못된 이유로 통과,
+포트 충돌, OOM 배치 크기)이 드러났습니다. **환경을 다시 세워봐야 보이는 것들이었습니다.**
 
 **"검색이 이상하다"가 검색 문제가 아닐 수 있다는 걸 배웠습니다.** relevance가 안 나올 때
 rerank 가중치부터 만졌지만 실제 원인은 쿼리 생성 단계의 언어 불일치였습니다. 비용도
