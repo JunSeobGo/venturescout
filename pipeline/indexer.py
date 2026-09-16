@@ -173,3 +173,17 @@ class PatentIndexer:
                 pairs,
                 page_size=256,
             )
+
+
+if __name__ == "__main__":
+    # `python -m pipeline.indexer`로 바로 돌릴 수 있게 한 진입점.
+    # 이전에는 없어서 모듈 임포트만 되고 조용히 exit 0으로 끝났다 —
+    # "돌렸는데 임베딩이 0건"의 원인이었다.
+    import json as _json
+    import logging as _logging
+
+    _logging.basicConfig(level=_logging.INFO, format="%(message)s")
+    _indexer = PatentIndexer()
+    _result = _indexer.run()
+    print(_json.dumps(_result, ensure_ascii=False, indent=2))
+    print(_json.dumps(_indexer.verify_sync(), ensure_ascii=False, indent=2))
