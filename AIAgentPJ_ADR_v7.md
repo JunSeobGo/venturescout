@@ -467,27 +467,44 @@ docker compose up --build               # 또는 --force-recreate
 
 ## 5. 미해결·확인 필요 (open)
 
-- [ ] BigQuery 추천 CPC 실제 건수 dry run (ADR-003) — 너무 많으면 연도 축소, 적으면 CPC 확장
+> **2026-09 현행화** — 부트캠프 종료로 공용 인프라가 정리됐다(AWS 자격증명 무효,
+> RDS 인스턴스 삭제로 호스트 DNS 미해석, Bedrock 미사용). 팀 협업도 종료돼 org 레포는
+> PR #2로 `integration`→`main` 머지 후 사실상 동결됐고, 이후 작업은 개인 미러 레포에서
+> 단독 진행한다. 인프라·팀 전제에 묶여 있던 항목은 해소로 정리하고, 코드에 남은 것만 open으로 둔다.
+
+### 해소 (인프라·팀 종료 또는 구현 완료)
+
+- [x] **D 브랜치 커밋 + PR 머지** — PR #2로 `integration`→`main` 머지 완료
+- [x] **RDS 관련 전부** — 보안그룹 인바운드, RDS-side 결함(중복 UNIQUE 각 2건,
+      FTS `english`) — 인스턴스가 삭제돼 무효. `db/init.sql`이 스키마의 **유일한 정본**이
+      됐고 로컬 docker(pgvector/pgvector:pg16)로 재생성한다
+- [x] **오프라인/CI가 RDS 의존** (ADR-037) — 로컬 postgres+pgvector로 해소.
+      절차는 `docs/local-setup.md`
+- [x] **solution_advisor(대안) 에이전트** — `alternatives_node`로 구현 완료(kill 원인별
+      대안 제안, 조건부 라우팅, LLM 실패 시 graceful skip). `AgentName` Literal과
+      `agent_runs_agent_name_check` 제약 모두 반영
+- [x] **하네스 분산 대응** (ADR-030) — ADR-035로 N회 분포 집계 구현
+
+### open
+
+- [ ] **하네스 실측 완성** (ADR-029) — `cost_usd`는 실측 전환 완료(converse usage 토큰
+      누적). `overclaim`도 실측 연결 완료(guardrails 호출 배선). **남은 것:
+      `precision_at_k`·`contradiction_coverage`의 정답 라벨셋 작성** — 계산 경로는
+      `eval/labelset.py`에 있고 `eval/build_labelset.py`로 후보를 생성한다
+- [ ] **특허 코퍼스 소실** — `data/raw`는 .gitignore 대상이고 원본은 S3/RDS에만 있었다.
+      H4(tech)·H5(ip)는 근거 0건 → graceful skip → 판정이 항상 `more_research`로 고정된다.
+      복원하려면 `data/collect_from_bigquery.py`로 재수집(GCP BigQuery, AWS와 별개 과금).
+      이때 추천 CPC 실제 건수 dry run(ADR-003)도 같이 해야 한다
+- [ ] **`ip_overlap_candidates` 미적재** — IP 노드의 vector_search 후보가 테이블에 안 쌓인다
+      (항상 0건). `find_ip_overlap_candidates()`가 그래프에서 미호출. 시그니처 기능의
+      산출물이 DB에 남지 않아 사후 검증·평가가 불가능하다
+- [ ] **LLM 출력 truncation / strict raise** (ADR-036/037) — critic 컨텍스트 축소(-60%)로
+      완화됐으나 근본 해결은 (a) LLM이 narrative 필드만 내게 출력 축소 또는
+      (b) 파싱 실패 시 코드 default_output 폴백
+- [ ] **그래프 노드 sync** — astream_events가 sync도 중계하나, 실 LLM I/O 병렬성을 위해
+      async 전환 권장. §3 C↔D 계약 #1 참조
+- [ ] **rerank·hybrid 가중치에 근거 없음** — `hybrid 0.6/0.4`, `rerank 0.4/0.3/0.1/0.2`가
+      측정 없이 정해졌다. 라벨셋이 생기면 precision@k 기준으로 재조정할 것
+- [ ] DEMO_DELAY(기본 0.4s) — 배포 시 0
 - [ ] e5 폴백 시 `vector(768)→vector(1024)` 차원 변경 필요 (ADR-004)
-- [ ] 권장 3컬럼(decision·decision_summary·target_run_id) 최종 채택 여부 — 현재 DDL에 포함, 뺄 거면 해당 줄 삭제 (ADR-017)
-- [x] D3 게이트(Chainlit 스트리밍) 통과 → ADR-006 accepted 확정 (브라우저 E2E 검증, ADR-024/025/026). 임베딩 동기화 게이트는 B 진행 후 확인.
-- [x] **★C 리뷰(reducer, ADR-023)** — ADR-032로 해소: D가 C판 `shared/contracts.py`·`state.py`를 그대로 채택(agent_runs/AgentRun). 별도 reducer 협의 불필요해짐. **잔여**: contracts/state는 C와 바이트 동일 복사본 — C가 이후 또 고치면 D 복사본 stale(동기화 필요). PR 디프상 C 척추 파일이 D 변경으로 보이는 점 리뷰어에 공유.
-- [ ] **★D 브랜치 커밋 + PR 머지** — `bm_node`·`_bm_payload`(graph.py, ADR-028)·`eval/harness.py`+`eval/__init__.py`(ADR-029)를 `D`에 커밋 → `D` → main(또는 dev), ADR-021 1리뷰. state.py 포함이므로 **C를 리뷰어로 지정**.
-- [ ] **하네스 실측** (ADR-029) — C ⑦ 실LLM → `objections_added`·`decision` 실값 / B 실검색+정답라벨 → `precision_at_k`·`contradiction_coverage` / C Bedrock → `cost_usd`. Tier 2 진입(ADR-018).
-- [x] **RDS(공용 DB)** — AWS RDS PostgreSQL 16으로 전환·스키마 문서 동기화 완료(ADR-031). ADR-005 정합 정리 끝(호스팅만 로컬→RDS, 단일 스토어 원칙 유지). `.env`는 .gitignore로 보호 확인. **잔여 open**:
-  - [x] **앱 E2E (RDS)** — ADR-033으로 완료: `integration` 브랜치에서 `/analyze`가 **실 RDS 임베딩 데이터**로 하이브리드 검색→6 agent_runs→`more_research` 도출 검증. 테스트행 CASCADE 정리(잔존 0). 단 `agent_runs`/`evidence_items` 실적재는 아직 안 함(아래 통합 항목).
-- [x] **★integration → main 정리 3건** (ADR-033) — 대부분 해소:
-  1. ✅ `test_mock_graph` → C가 ADR-037에서 `test_live_graph`로 교체(monkeypatch, 30 passed)
-  2. ✅ `agent_runs`/`evidence_items` 실적재 — C가 배선(`try_persist_agent_run`) + hypothesis 코드→uuid 변환(아직 solution_advisor_agent 브랜치, integration 미반영)
-  3. ✅ ui "신호" 칸 — ADR-038에서 signal 폴백·LLM 한글 프롬프트로 해결
-  - [ ] **보안그룹** — 현재 테스트 PC 공인 IP만 허용 추정. 팀원 PC·배포 환경은 인바운드 규칙 추가 필요(AWS 콘솔 권한 요함).
-  - [ ] **RDS-side 결함**(ADR-031 문서화만, 미수정) — `patent_claims`·`claim_limitations` 중복 UNIQUE 각 2건, FTS `english`(한국어 부적합 가능). 운영 공유 DB라 팀 논의 후 별도 처리.
-- [ ] DEMO_DELAY(기본 0.4s) — 실 LLM 붙으면 0으로 (env로 분리 완료, 배포 시 0 설정)
-- [ ] 그래프 노드 현재 sync — astream_events는 sync도 중계되나, C가 실 LLM 붙일 때 async 전환 권장(I/O 병렬성). §3 C↔D 계약 #1 참조.
-- [x] **하네스 분산 대응** (ADR-030) — ADR-035로 구현 완료(N회 분포 집계). 1차 방어 temperature↓는 추후.
-- [ ] **LLM 출력 truncation / strict raise** (ADR-036/037) — critic·ip가 scorecard·candidates까지 통째 재출력해 토큰 초과 시 JSON 잘림 → 새 llm.py가 graceful 폴백 없이 RuntimeError로 **잡 사망**. `BEDROCK_MAX_TOKENS=8192`로 완화했으나 근본은 (a) LLM이 narrative 필드만 내게 출력 축소 또는 (b) 파싱 실패 시 코드 default_output 폴백(critic default는 코드 계산값이라 mock 아님). C 영역.
-- [ ] **오프라인/CI가 RDS 의존** (ADR-037) — mock 전면 제거로 `RETRIEVAL=mock` 불가. CI에 RDS 접근 없으면 곤란 → 팀 합의 필요(테스트는 monkeypatch로 우회 중).
-- [ ] **`ip_overlap_candidates` 미적재** — IP 노드 vector_search 후보가 ip_overlap_candidates 테이블에 안 쌓임(항상 0건). `find_ip_overlap_candidates`(B)가 그래프에서 미호출. B/C 확인.
-- [ ] **solution_advisor(대안) 에이전트** — 현재 **설계 문서만**(`solution_advisor_agent` 브랜치), 코드 미구현. 구현 시 **`AgentName` Literal + RDS `agent_runs_agent_name_check` 제약에 새 agent_name 추가 필수**(안 하면 INSERT/검증 실패). Critic의 next_experiments와 역할 중복 여부 C와 정리.
-- [ ] **integration push / main PR** — 로컬 `agents/llm.py`(us→jp 모델명) 커밋 `0ed525a`는 메시지만 amend됨(origin은 `c5943e0`) → force-push 보류 중(공유 브랜치 주의). solution_advisor_agent의 persistence uuid 픽스(a22e184)를 integration으로 가져오는 것도 필요.
-- [ ] **AWS 키 평문 노출** — `.env`에 실 AWS 키·DB 비번 평문(.gitignore로 커밋 차단됨). 유출 이력 있으면 로테이션 권장.
+- [ ] 권장 3컬럼(decision·decision_summary·target_run_id) 최종 채택 여부 (ADR-017)
