@@ -10,6 +10,8 @@ secrets/
 !data/competitors/*.json
 !data/pricing/*.json
 !data/reviews/*.json
+# 평가 라벨셋 — 재현 가능한 측정의 전제라 커밋한다(eval/labels/README.md)
+!eval/labels/*.json
 credentials
 credentials/
 

@@ -1,0 +1,653 @@
+{
+  "version": 1,
+  "note": "★ 채울 칸은 두 개뿐입니다: relevant 와 stance.\n  relevant : 이 문서가 '질문'에 답하는 데 도움이 되면 true, 아니면 false.\n             같은 업계라는 이유만으로 true를 주지 마세요.\n  stance   : 질문 내용을 뒷받침하면 supports / 반박하면 contradicts / 관련은 있지만 방향이 없으면 neutral.\n_ 로 시작하는 칸(_한글요약 등)은 읽기용이며 채점에 쓰이지 않습니다.",
+  "pool": 10,
+  "queries": [
+    {
+      "query_id": "saas-h1",
+      "axis": "customer_problem",
+      "query": "Teams lose time because maintenance knowledge is scattered across tools.",
+      "source_types": [
+        "seed_review"
+      ],
+      "labels": {
+        "23dfa4cb-53a2-4abf-bc6e-cf39955758c9": {
+          "relevant": null,
+          "stance": "neutral",
+          "_source_type": "seed_review",
+          "_excerpt": "G2 reviewers describe the interface as complex and less intuitive for first-time users, with configuration and customization often requiring specialized knowledge, multi-step workflows, and rigid repo",
+          "_relevance_score": 0.3563,
+          "_한글요약": "G2 리뷰어들이 UI가 복잡하고 초보자에게 비직관적이며, 설정·커스터마이징에 전문지식과 여러 단계가 필요하다고 평가"
+        },
+        "167087ba-8fde-4cf6-b99b-9b312b7c594b": {
+          "relevant": null,
+          "stance": "neutral",
+          "_source_type": "seed_review",
+          "_excerpt": "Many users find Teamwork.com's interface and deep feature set overwhelming at first, especially on smaller teams, and the platform's complexity requires dedicated training to use effectively. Reviewer",
+          "_relevance_score": 0.3203,
+          "_한글요약": "Teamwork.com의 UI와 방대한 기능이 처음엔 압도적이고, 특히 소규모 팀은 전담 교육이 필요하다는 평"
+        },
+        "d6609257-bb35-4eaa-b9fe-7a9a9feb90fc": {
+          "relevant": null,
+          "stance": "neutral",
+          "_source_type": "seed_review",
+          "_excerpt": "Users frequently report limited flexibility in advanced reporting and automation, with difficulty drilling down for things like time-tracking or grouping at a micro level. Basic scheduling behaviors s",
+          "_relevance_score": 0.2937,
+          "_한글요약": "고급 리포팅·자동화의 유연성이 부족하고, 시간추적이나 세부 그룹핑을 파고들기 어렵다는 지적"
+        },
+        "c67c5a72-abd2-44d4-8523-3d753e085b9a": {
+          "relevant": null,
+          "stance": "neutral",
+          "_source_type": "seed_review",
+          "_excerpt": "Users report a steep learning curve, with database customization, page relationships, and tracking automation requiring meaningful exploration before mastery. Notion is described as good enough for pr",
+          "_relevance_score": 0.2618,
+          "_한글요약": "Notion 학습곡선이 가파르고 DB 커스터마이징·페이지 관계·자동화 숙달에 상당한 탐색이 필요"
+        },
+        "99c9213e-fbc3-45c1-b80b-27a228c335d8": {
+          "relevant": null,
+          "stance": "neutral",
+          "_source_type": "seed_review",
+          "_excerpt": "Users commonly report notification overload and a \"culture of immediacy\" that can stifle deep work, with important messages getting lost amid frequent pings and a high channel count. The interface is ",
+          "_relevance_score": 0.2597,
+          "_한글요약": "알림 과부하와 '즉시 응답 문화'가 깊은 몰입을 방해하고, 잦은 알림 속에 중요 메시지가 묻힌다"
+        },
+        "f8d9e25a-52be-4c12-ad4b-528b237ab0b1": {
+          "relevant": null,
+          "stance": "neutral",
+          "_source_type": "seed_review",
+          "_excerpt": "Reviewers describe Zendesk's pricing as deceptively simple on the surface but one of the trickier models to budget against in the support-tooling space, since features many teams expect to be standard",
+          "_relevance_score": 0.2476,
+          "_한글요약": "Zendesk 가격이 겉보기엔 단순하지만 실제 예산 잡기가 까다로운 모델이라는 평"
+        },
+        "d12963b5-dd24-4ff1-a20a-9e03c628f3e7": {
+          "relevant": null,
+          "stance": "neutral",
+          "_source_type": "seed_review",
+          "_excerpt": "Reviewers frequently cite a steep implementation curve of 6-12 months, with a challenging initial setup and a non-intuitive, somewhat outdated interface that becomes especially frustrating during upda",
+          "_relevance_score": 0.2465,
+          "_한글요약": "도입에 6~12개월이 걸리고 초기 세팅이 어려우며 UI가 비직관적·구식이라는 지적"
+        },
+        "a47f84d8-6243-4621-9a0e-c03beb342b4c": {
+          "relevant": null,
+          "stance": "neutral",
+          "_source_type": "seed_review",
+          "_excerpt": "Users consistently cite per-user pricing at scale as a pain point, especially since self-hosting moved to an Enterprise-only option in 2026, leaving cloud customers to pay per seat or negotiate an Ent",
+          "_relevance_score": 0.2412,
+          "_한글요약": "규모가 커질수록 사용자당 과금이 부담이고, 2026년 셀프호스팅이 엔터프라이즈 전용이 되며 클라우드 고객은 좌석당 지불"
+        },
+        "c9b0d54f-41f1-470f-aba7-1b84a15da5d0": {
+          "relevant": null,
+          "stance": "neutral",
+          "_source_type": "seed_review",
+          "_excerpt": "Workday implementations are widely reported as difficult, multi-stage projects that often require significant external consulting support and specialized internal staff who are hard to find or build i",
+          "_relevance_score": 0.2399,
+          "_한글요약": "Workday 도입이 다단계 난공사이고 외부 컨설팅과 구하기 힘든 전문 인력이 필요하다는 평"
+        },
+        "d5c511cb-6676-4421-906a-3d14d635ffe7": {
+          "relevant": null,
+          "stance": "neutral",
+          "_source_type": "seed_review",
+          "_excerpt": "Reviewers report that Linear's engineering-first design makes it hard for non-engineering roles such as designers, ops, or executives to find a simple, high-level view, and the tool is widely describe",
+          "_relevance_score": 0.2386,
+          "_한글요약": "Linear가 엔지니어 중심 설계라 디자이너·운영·경영진이 상위 레벨 뷰를 찾기 어렵다"
+        }
+      },
+      "_질문_한글": "팀이 정비·업무 지식이 여러 도구에 흩어져 있어 시간을 낭비한다",
+      "_판단기준": "아래 문서들이 '팀이 정비·업무 지식이 여러 도구에 흩어져 있어 시간을 낭비한다' 를 판단하는 데 도움이 되는가?"
+    },
+    {
+      "query_id": "saas-h2",
+      "axis": "competition",
+      "query": "Existing work management tools do not cover field maintenance workflows.",
+      "source_types": [
+        "seed_competitor"
+      ],
+      "labels": {
+        "32fd246a-41a4-44b6-844a-30678c72b5a1": {
+          "relevant": null,
+          "stance": "neutral",
+          "_source_type": "seed_competitor",
+          "_excerpt": "monday.com is a cloud-based, no-code/low-code Work Operating System launched in 2014 that lets teams build modular tools to manage projects, automate workflows, and track business processes. The produ",
+          "_relevance_score": 0.4522,
+          "_한글요약": "monday.com — 2014년 출시된 노코드/로우코드 Work OS. 모듈형 도구로 프로젝트 관리·워크플로 자동화"
+        },
+        "7dcfb68e-b577-45e2-bf09-b0407523fd6e": {
+          "relevant": null,
+          "stance": "neutral",
+          "_source_type": "seed_competitor",
+          "_excerpt": "Jira is Atlassian's project and issue tracking platform supporting agile methodologies such as Kanban and Scrum alongside customizable lists and timeline views. Jira Software targets software developm",
+          "_relevance_score": 0.3976,
+          "_한글요약": "Jira — Atlassian의 프로젝트·이슈 트래킹. 칸반/스크럼 등 애자일 방법론 지원"
+        },
+        "c912d735-fd32-4ce3-bd01-a557d7ce057b": {
+          "relevant": null,
+          "stance": "neutral",
+          "_source_type": "seed_competitor",
+          "_excerpt": "Wrike is a cloud-based work management platform that centralizes project planning, task execution, and team collaboration, with customizable dashboards, Gantt charts, Kanban boards, resource managemen",
+          "_relevance_score": 0.3748,
+          "_한글요약": "Wrike — 프로젝트 기획·실행·협업을 통합한 클라우드 업무관리. 대시보드·간트·칸반"
+        },
+        "817b2d7f-e827-4eab-a601-3b9ad5281ea3": {
+          "relevant": null,
+          "stance": "neutral",
+          "_source_type": "seed_competitor",
+          "_excerpt": "Teamwork.com is a project management platform built specifically for businesses and agencies that manage client projects, combining task lists, milestones, workload management, resource planning, and ",
+          "_relevance_score": 0.3557,
+          "_한글요약": "Teamwork.com — 고객사 프로젝트를 다루는 기업·에이전시 전용 프로젝트 관리"
+        },
+        "4264e7aa-3f4c-4b3e-867f-9b63a96bf82f": {
+          "relevant": null,
+          "stance": "neutral",
+          "_source_type": "seed_competitor",
+          "_excerpt": "Smartsheet is an enterprise platform for dynamic work that lets teams manage projects, automate workflows, and build secure solutions on a centralized, cloud-based system, combining flexibility and sc",
+          "_relevance_score": 0.3477,
+          "_한글요약": "Smartsheet — 프로젝트 관리·워크플로 자동화를 하는 엔터프라이즈 동적 업무 플랫폼"
+        },
+        "159a59e8-a80d-45fe-b00b-089a1dfca7a0": {
+          "relevant": null,
+          "stance": "neutral",
+          "_source_type": "seed_competitor",
+          "_excerpt": "ServiceNow HR Service Delivery (HRSD) automates HR services and workflows to transform employee experience, covering case and knowledge management, employee journeys (onboarding, life events), SLA man",
+          "_relevance_score": 0.3446,
+          "_한글요약": "ServiceNow HRSD — HR 서비스·워크플로 자동화. 케이스/지식 관리, 온보딩 등 직원 여정"
+        },
+        "94cfa37f-2275-4f51-b582-858ae6c5e371": {
+          "relevant": null,
+          "stance": "neutral",
+          "_source_type": "seed_competitor",
+          "_excerpt": "Asana is a work management platform that helps teams plan, track, and coordinate work through five project views, custom task fields, and in-task comments and file sharing, with AI-powered automation ",
+          "_relevance_score": 0.3422,
+          "_한글요약": "Asana — 5가지 프로젝트 뷰, 커스텀 필드, 태스크 내 코멘트로 협업하는 업무관리"
+        },
+        "76dea1e4-dd28-4fdb-a346-2a75651140b0": {
+          "relevant": null,
+          "stance": "neutral",
+          "_source_type": "seed_competitor",
+          "_excerpt": "Linear is a fast, minimal, opinionated project management tool built specifically for software teams, combining issue tracking, sprint cycles, roadmapping, and AI-assisted triage in a keyboard-driven ",
+          "_relevance_score": 0.3262,
+          "_한글요약": "Linear — 소프트웨어 팀 전용의 빠르고 미니멀한 프로젝트 관리. 이슈추적·스프린트·로드맵"
+        },
+        "46e2769a-eceb-45ee-8e52-16a860950b48": {
+          "relevant": null,
+          "stance": "neutral",
+          "_source_type": "seed_competitor",
+          "_excerpt": "ServiceNow's Now Platform began as IT Service Management (ITSM) software and has expanded into a broader workflow automation platform spanning IT Operations Management, HR Service Delivery, and Custom",
+          "_relevance_score": 0.3241,
+          "_한글요약": "ServiceNow Now Platform — ITSM에서 출발해 IT운영·HR 등으로 확장된 워크플로 자동화 플랫폼"
+        },
+        "3e7ca949-c175-405d-9d12-949dca6d928e": {
+          "relevant": null,
+          "stance": "neutral",
+          "_source_type": "seed_competitor",
+          "_excerpt": "ClickUp positions itself as an \"everything app\" for work, aiming to replace separate tasks, docs, spreadsheets, wikis, goals, time tracking, and team chat tools with a single interface. It includes ta",
+          "_relevance_score": 0.2958,
+          "_한글요약": "ClickUp — 태스크·문서·스프레드시트·위키·목표·시간추적·채팅을 하나로 합친 '올인원 앱'"
+        }
+      },
+      "_질문_한글": "기존 업무관리 도구들은 현장 정비(field maintenance) 업무흐름을 다루지 않는다",
+      "_판단기준": "아래 문서들이 '기존 업무관리 도구들은 현장 정비(field maintenance) 업무흐름을 다루지 않는다' 를 판단하는 데 도움이 되는가?"
+    },
+    {
+      "query_id": "saas-h3",
+      "axis": "business_model",
+      "query": "Per-seat monthly subscription is viable for small B2B teams.",
+      "source_types": [
+        "seed_pricing",
+        "seed_review",
+        "seed_competitor"
+      ],
+      "labels": {
+        "71d5ed3d-5912-42d2-9ebe-8cb5e284c04c": {
+          "relevant": null,
+          "stance": "neutral",
+          "_source_type": "seed_pricing",
+          "_excerpt": "Notion offers a Free plan with unlimited pages and core features, then Plus at $10/member/month (annual billing) which removes page-history and file-upload limits, Business at roughly $18-20/member/mo",
+          "_relevance_score": 0.7663,
+          "_한글요약": "Notion 가격 — 무료 플랜, Plus $10/인/월, Business는 그보다 상위 (연간 결제 기준)"
+        },
+        "42c245b2-544a-4659-8926-fca90a4f583e": {
+          "relevant": null,
+          "stance": "neutral",
+          "_source_type": "seed_pricing",
+          "_excerpt": "monday.com offers a limited free plan for up to 2 seats, then three paid per-seat tiers billed annually: Basic at $9/seat/month, Standard at $12/seat/month, and Pro at $19/seat/month (monthly billing ",
+          "_relevance_score": 0.7167,
+          "_한글요약": "monday.com 가격 — 2석까지 무료, Basic $9 / Standard $12 / Pro $19 (좌석당 월, 연간)"
+        },
+        "eb38ae9d-672c-4238-b8e5-93752a0d0d64": {
+          "relevant": null,
+          "stance": "neutral",
+          "_source_type": "seed_pricing",
+          "_excerpt": "Lattice's two core plans are Talent Management at $11/seat/month (performance, with add-ons for engagement, compensation, and growth) and HRIS at $10/seat/month (complete HR management with payroll ad",
+          "_relevance_score": 0.7091,
+          "_한글요약": "Lattice 가격 — Talent Management $11/좌석/월, HRIS $10/좌석/월"
+        },
+        "172c020d-871e-42ec-8fdb-cd12861d9959": {
+          "relevant": null,
+          "stance": "neutral",
+          "_source_type": "seed_pricing",
+          "_excerpt": "Wrike's Free plan supports up to 5 users. Paid tiers (annual billing) are Team at $10/user/month and Business at roughly $20-25/user/month, with Business carrying a 5-user minimum that turns the $25 h",
+          "_relevance_score": 0.6344,
+          "_한글요약": "Wrike 가격 — 5인까지 무료, Team $10/인/월, Business 약 $20~25/인/월 (최소 5인)"
+        },
+        "5d7954df-0a58-4f47-9fe3-dcfce5898549": {
+          "relevant": null,
+          "stance": "neutral",
+          "_source_type": "seed_pricing",
+          "_excerpt": "Juicebox pricing starts at $139 per seat per month, but add-ons such as AI Agents ($199/month) push the real effective cost near $400/month before a single hire is closed. The Starter plan excludes ph",
+          "_relevance_score": 0.6326,
+          "_한글요약": "Juicebox 가격 — 좌석당 $139/월부터. AI 에이전트 애드온($199/월) 포함 시 실질 $400/월에 근접"
+        },
+        "550d828e-236e-4545-9566-62e3d6435da5": {
+          "relevant": null,
+          "stance": "neutral",
+          "_source_type": "seed_pricing",
+          "_excerpt": "Kantata does not publish official list pricing; quotes are based on user count, feature tier, customizations, and integrations. Third-party estimates are inconsistent: one industry estimate suggests r",
+          "_relevance_score": 0.6215,
+          "_한글요약": "Kantata — 공식 가격 미공개. 인원수·기능·커스터마이징에 따른 견적제, 3자 추정치도 제각각"
+        },
+        "eb8910d8-e7a1-4bc9-b9e3-649622cc93c3": {
+          "relevant": null,
+          "stance": "neutral",
+          "_source_type": "seed_pricing",
+          "_excerpt": "Recombee offers a free plan covering up to 100,000 recommendation requests per month, making it accessible for small businesses to test. Paid tiers include Standard at $99 per month, Plus at $899 per ",
+          "_relevance_score": 0.6045,
+          "_한글요약": "Recombee 가격 — 월 10만 건까지 무료, Standard $99/월부터. 소기업이 테스트하기 좋음"
+        },
+        "7805505b-8c4d-44cb-8616-a5b8877eb40e": {
+          "relevant": null,
+          "stance": "neutral",
+          "_source_type": "seed_pricing",
+          "_excerpt": "HubSpot Marketing Hub has four published tiers: Free ($0), Starter (around $20 per seat per month on annual billing, includes 1,000 marketing contacts, with additional contacts at $50/month per 1,000)",
+          "_relevance_score": 0.5994,
+          "_한글요약": "HubSpot Marketing Hub — 무료 / Starter 약 $20/좌석/월(연간, 마케팅 연락처 1,000명 포함) 등 4단계"
+        },
+        "14c9fb5e-e412-4e4f-9ed7-18e0d9c7fddf": {
+          "relevant": null,
+          "stance": "neutral",
+          "_source_type": "seed_competitor",
+          "_excerpt": "Lattice is a people management platform used by nearly 4,000 companies globally to centralize performance reviews, OKR goal setting and tracking, feedback, employee engagement surveys, calibrations, p",
+          "_relevance_score": 0.5921,
+          "_한글요약": "Lattice 소개 — 성과 리뷰·OKR·피드백·직원 만족도 조사를 통합한 피플 매니지먼트. 약 4,000개사 사용"
+        },
+        "96b40045-8d4b-4dca-9983-e811ee698aa9": {
+          "relevant": null,
+          "stance": "neutral",
+          "_source_type": "seed_pricing",
+          "_excerpt": "Retool's Free tier supports up to 5 Standard Users (builders) and 5 End Users with core database/API integrations and pre-built components. The Team plan is $10 per Standard User per month (annual bil",
+          "_relevance_score": 0.587,
+          "_한글요약": "Retool 가격 — 무료는 빌더 5명+엔드유저 5명, Team은 빌더당 $10/월"
+        }
+      },
+      "_질문_한글": "소규모 B2B 팀에게 좌석당 월 구독 모델이 성립한다",
+      "_판단기준": "아래 문서들이 '소규모 B2B 팀에게 좌석당 월 구독 모델이 성립한다' 를 판단하는 데 도움이 되는가?"
+    },
+    {
+      "query_id": "fintech-h1",
+      "axis": "customer_problem",
+      "query": "Merchants struggle to reconcile embedded payment settlements.",
+      "source_types": [
+        "seed_review"
+      ],
+      "labels": {
+        "d4975184-78b1-476e-b980-b526e02b9ea0": {
+          "relevant": null,
+          "stance": "neutral",
+          "_source_type": "seed_review",
+          "_excerpt": "A late-2025 settlement would cap Visa and Mastercard credit interchange fees into 2030, trimming rates by 10 basis points for five years and setting a 1.25% rate for standard consumer cards for eight ",
+          "_relevance_score": 0.3782,
+          "_한글요약": "2025년 말 합의로 비자·마스터카드 신용 인터체인지 수수료를 2030년까지 상한. 5년간 10bp 인하, 표준 소비자 카드 1.25%"
+        },
+        "25305fee-d01f-4757-ae00-764f196e27e4": {
+          "relevant": null,
+          "stance": "neutral",
+          "_source_type": "seed_review",
+          "_excerpt": "Merchants and trade associations sued Visa, Mastercard, and card-issuing banks in 2005 over alleged price-fixing and anticompetitive practices in interchange fee setting; a 2019 settlement totaled $5.",
+          "_relevance_score": 0.3296,
+          "_한글요약": "2005년 가맹점·협회가 비자·마스터카드·발급은행을 인터체인지 가격담합으로 제소한 소송 경과"
+        },
+        "899af4ed-d928-40d8-839a-6ead98000aa7": {
+          "relevant": null,
+          "stance": "neutral",
+          "_source_type": "seed_review",
+          "_excerpt": "Several customers report chronic sync errors integrating BILL with accounting platforms like QuickBooks Online, Sage Intacct, and NetSuite, with one reviewer describing corrupted historical client dat",
+          "_relevance_score": 0.2862,
+          "_한글요약": "BILL을 QuickBooks·Sage Intacct·NetSuite와 연동할 때 만성적인 동기화 오류. 이력이 깨졌다는 리뷰도"
+        },
+        "f119596f-a0f2-4ab2-a6b0-38fc59b4991e": {
+          "relevant": null,
+          "stance": "neutral",
+          "_source_type": "seed_review",
+          "_excerpt": "Reviewers describe TreviPay as reliable for structured pay-by-invoice programs, but note it may not be the best fit for businesses that do not have a high volume of B2B transactions, since it requires",
+          "_relevance_score": 0.2799,
+          "_한글요약": "TreviPay는 구조화된 후불청구 프로그램엔 안정적이나, B2B 거래량이 적은 기업엔 부적합할 수 있다는 평"
+        },
+        "4ad14671-1b75-4640-9c35-9d0f05d7db88": {
+          "relevant": null,
+          "stance": "neutral",
+          "_source_type": "seed_review",
+          "_excerpt": "The two most cited complaints against accepting American Express are higher merchant fees relative to other major card networks and slower settlement times, which historically limited Amex's market ac",
+          "_relevance_score": 0.266,
+          "_한글요약": "아멕스 수용 시 가장 많이 지적되는 불만 두 가지 — 타 카드망 대비 높은 가맹점 수수료와 느린 정산"
+        },
+        "c8a2ec75-68fc-4160-9196-5ec5ca6e38ba": {
+          "relevant": null,
+          "stance": "neutral",
+          "_source_type": "seed_review",
+          "_excerpt": "Reviewers on G2 report that fees can accumulate noticeably for businesses making frequent transactions and conversions, despite the per-transfer transparency. Some users describe encountering double f",
+          "_relevance_score": 0.2548,
+          "_한글요약": "건당 투명성에도 불구하고 거래·환전이 잦은 기업은 수수료가 눈에 띄게 누적된다는 G2 리뷰"
+        },
+        "2940dfb8-8630-4e2b-bd68-715a92c22ada": {
+          "relevant": null,
+          "stance": "neutral",
+          "_source_type": "seed_review",
+          "_excerpt": "On G2, \"Approval Issues\" is the single most-mentioned complaint category, with 49 mentions covering miscategorized purchases and inadequate onboarding, and 55 mentions specifically citing approval-pro",
+          "_relevance_score": 0.2495,
+          "_한글요약": "G2에서 최다 언급 불만이 '승인 문제'(49건). 지출 오분류·미흡한 온보딩 관련"
+        },
+        "1fe78caa-4af1-4568-a3cc-7069721bc5a2": {
+          "relevant": null,
+          "stance": "neutral",
+          "_source_type": "seed_review",
+          "_excerpt": "Reviewers report that Razorpay's refund system is slow, often taking more than 7 days to process. One of the most frequent complaints involves unexpected charges related to forex markups, chargebacks,",
+          "_relevance_score": 0.2463,
+          "_한글요약": "Razorpay 환불이 7일 이상 걸릴 정도로 느리고, 외환 관련 예상치 못한 청구가 잦다는 불만"
+        },
+        "1647232a-c72a-453c-8995-92345d4334dc": {
+          "relevant": null,
+          "stance": "neutral",
+          "_source_type": "seed_review",
+          "_excerpt": "At least one verified reviewer describes the Clerk.io integration with Magento 2 as deeply problematic. The platform's per-feature pricing model, while modular, means customization options outside the",
+          "_relevance_score": 0.2411,
+          "_한글요약": "Clerk.io와 Magento 2 연동이 매우 문제적이라는 리뷰. 기능별 과금 모델이라 커스터마이징 비용 부담"
+        },
+        "7e456f71-563e-4746-8522-52ab8581174e": {
+          "relevant": null,
+          "stance": "neutral",
+          "_source_type": "seed_review",
+          "_excerpt": "Users report that pricing does not work for most clients and limits the ability to gain market share against competitors. IBM support is required even after the HCL acquisition, adding another expense",
+          "_relevance_score": 0.24,
+          "_한글요약": "가격이 대부분의 고객에게 맞지 않아 점유율 확보가 어렵고, HCL 인수 후에도 IBM 지원이 필요하다는 지적"
+        }
+      },
+      "_질문_한글": "가맹점이 임베디드 결제의 정산 대사(reconcile)에 어려움을 겪는다",
+      "_판단기준": "아래 문서들이 '가맹점이 임베디드 결제의 정산 대사(reconcile)에 어려움을 겪는다' 를 판단하는 데 도움이 되는가?"
+    },
+    {
+      "query_id": "hr-h2",
+      "axis": "competition",
+      "query": "Global payroll platforms compete on multi-country compliance coverage.",
+      "source_types": [
+        "seed_competitor"
+      ],
+      "labels": {
+        "d6630914-1fc6-4ddc-9252-293896858b7f": {
+          "relevant": null,
+          "stance": "neutral",
+          "_source_type": "seed_competitor",
+          "_excerpt": "Deel is an all-in-one global employment platform combining Employer of Record (EOR), global payroll, contractor management, HR, IT, and compliance in one system. As of April 2026 it operates 250 owned",
+          "_relevance_score": 0.6129,
+          "_한글요약": "Deel — EOR·글로벌 급여·계약자 관리·HR·IT·컴플라이언스를 한 시스템에 묶은 글로벌 고용 플랫폼"
+        },
+        "6743a41f-818f-41b8-9885-197cd39c609a": {
+          "relevant": null,
+          "stance": "neutral",
+          "_source_type": "seed_competitor",
+          "_excerpt": "Remote (launched 2019) provides global payroll, Employer of Record (EOR), and contractor management infrastructure that other HR platforms also build on, with 100% owned legal entities across 90+ coun",
+          "_relevance_score": 0.5726,
+          "_한글요약": "Remote(2019) — 글로벌 급여·EOR·계약자 관리 인프라. 법인을 100% 직접 보유"
+        },
+        "634c5dcd-33ab-47e5-be81-4f5c18583c5d": {
+          "relevant": null,
+          "stance": "neutral",
+          "_source_type": "seed_competitor",
+          "_excerpt": "Personio, founded in Munich in 2015, offers an all-in-one \"People Operating System\" integrating recruiting, onboarding, performance management, payroll, time tracking, and employee self-service for SM",
+          "_relevance_score": 0.564,
+          "_한글요약": "Personio(2015, 뮌헨) — 채용·온보딩·성과관리·급여·근태를 통합한 올인원 'People OS'"
+        },
+        "02e3c940-34d4-4b5f-b58f-ff86e2449c8d": {
+          "relevant": null,
+          "stance": "neutral",
+          "_source_type": "seed_competitor",
+          "_excerpt": "Warp is a cloud-based payroll and compliance platform built for founders and remote teams, automating payroll, tax compliance, and benefits, handling tax registrations and compliance across all 50 US ",
+          "_relevance_score": 0.5558,
+          "_한글요약": "Warp — 창업자·원격팀용 클라우드 급여·컴플라이언스. 세금 등록과 규정준수를 자동 처리"
+        },
+        "c6961157-c51a-4c53-8b99-ede733b830e2": {
+          "relevant": null,
+          "stance": "neutral",
+          "_source_type": "seed_competitor",
+          "_excerpt": "Rippling unifies HR, IT, and Finance into a single platform, combining HRIS, global and domestic payroll, applicant tracking, benefits administration, expense management, corporate cards, device manag",
+          "_relevance_score": 0.4554,
+          "_한글요약": "Rippling — HR·IT·재무를 단일 플랫폼으로. HRIS, 글로벌/국내 급여, 채용, 복리후생, 경비"
+        },
+        "00a52275-e5d4-4e49-88cd-e3065c694049": {
+          "relevant": null,
+          "stance": "neutral",
+          "_source_type": "seed_competitor",
+          "_excerpt": "UKG Pro is an enterprise Human Capital Management platform integrating HR, payroll, talent management (applicant tracking, performance management), time and attendance, workforce scheduling, and globa",
+          "_relevance_score": 0.3728,
+          "_한글요약": "UKG Pro — HR·급여·인재관리·근태·인력관리를 통합한 엔터프라이즈 HCM"
+        },
+        "5d27b5fd-78e1-4c12-9484-724332c23997": {
+          "relevant": null,
+          "stance": "neutral",
+          "_source_type": "seed_competitor",
+          "_excerpt": "Paycor, headquartered in Cincinnati and offering cloud-based payroll, HR, and timekeeping since 1990, serves more than 30,000 businesses with an all-in-one HCM platform covering payroll, time and atte",
+          "_relevance_score": 0.369,
+          "_한글요약": "Paycor — 1990년부터 클라우드 급여·HR·근태 제공. 3만 개 이상 기업이 사용하는 올인원 HCM"
+        },
+        "3d2492ab-7682-45a0-a21d-aa5f409cad71": {
+          "relevant": null,
+          "stance": "neutral",
+          "_source_type": "seed_competitor",
+          "_excerpt": "ADP Workforce Now is a cloud-based human capital management platform unifying payroll, tax filing, HR, benefits administration, time and attendance, talent recruiting, and analytics in one system, wit",
+          "_relevance_score": 0.3573,
+          "_한글요약": "ADP Workforce Now — 급여·세무신고·HR·복리후생·근태·채용·분석을 통합한 클라우드 HCM"
+        },
+        "025787e7-8873-403e-8046-0ba2c04096bd": {
+          "relevant": null,
+          "stance": "neutral",
+          "_source_type": "seed_competitor",
+          "_excerpt": "BambooHR centralizes employee data, payroll, time tracking, and benefits in one HR platform, trusted by thousands of companies across more than 150 countries, with notable clients including Fitbit, Fr",
+          "_relevance_score": 0.3537,
+          "_한글요약": "BambooHR — 직원정보·급여·근태·복리후생을 한 곳에. 150개국 이상에서 사용"
+        },
+        "e6616aec-f4b6-4b18-9163-b3f9ff73aeac": {
+          "relevant": null,
+          "stance": "neutral",
+          "_source_type": "seed_competitor",
+          "_excerpt": "Paylocity is a unified cloud HCM platform bringing together HR, payroll, finance, and IT, with payroll automation, time and attendance, recruiting/onboarding, benefits administration, and expense mana",
+          "_relevance_score": 0.3436,
+          "_한글요약": "Paylocity — HR·급여·재무·IT를 묶은 통합 클라우드 HCM. 급여 자동화, 근태, 채용/온보딩"
+        }
+      },
+      "_질문_한글": "글로벌 급여 플랫폼들은 다국가 규정준수 커버리지로 경쟁한다",
+      "_판단기준": "아래 문서들이 '글로벌 급여 플랫폼들은 다국가 규정준수 커버리지로 경쟁한다' 를 판단하는 데 도움이 되는가?"
+    },
+    {
+      "query_id": "patent-h4",
+      "axis": "technology",
+      "query": "A system that retrieves maintenance records and recommends repair procedures.",
+      "source_types": [
+        "patent"
+      ],
+      "labels": {
+        "29680d45-6828-4b1c-9fb2-4bb46bfff2f0": {
+          "relevant": null,
+          "stance": "neutral",
+          "_source_type": "patent",
+          "_excerpt": "An auto repair quote platform may be provided. The platform may allow a user to enter a set of parameters and request quotes from service providers based on those parameters. Service providers may als",
+          "_relevance_score": 0.3366,
+          "_한글요약": "자동차 수리 견적 플랫폼 — 사용자가 조건을 입력하면 정비업체들로부터 견적을 받는다"
+        },
+        "090c5268-1fc4-417d-b5ca-aed8833aeabc": {
+          "relevant": null,
+          "stance": "neutral",
+          "_source_type": "patent",
+          "_excerpt": "This disclosure describes, in part, systems and techniques for retrieving complex data from multiple data sources corresponding to a current cost of consumable materials and a current cost of labor us",
+          "_relevance_score": 0.3325,
+          "_한글요약": "여러 데이터 소스에서 소모품의 현재 원가 등 복합 데이터를 조회하는 시스템"
+        },
+        "c9b932a3-1deb-4a48-be72-8e92f670050e": {
+          "relevant": null,
+          "stance": "neutral",
+          "_source_type": "patent",
+          "_excerpt": "A system and method for providing personalized recommendations or promotional information to consumers based upon a recommendation algorithm selected from a number of recommendation algorithms, by mat",
+          "_relevance_score": 0.3197,
+          "_한글요약": "여러 추천 알고리즘 중 하나를 골라 소비자에게 맞춤 추천·프로모션을 제공"
+        },
+        "4a898ce1-b725-416c-beff-d4751be7d278": {
+          "relevant": null,
+          "stance": "neutral",
+          "_source_type": "patent",
+          "_excerpt": "A management system improves many aspects of equipment rentals by tracking, processing and analyzing information related to the equipment rentals. Improvements involve: tiering of customer information",
+          "_relevance_score": 0.3187,
+          "_한글요약": "장비 렌탈 정보를 추적·처리·분석하는 관리 시스템 (등급제 등 개선)"
+        },
+        "3aa739eb-c361-4f93-8469-94a69ad201a7": {
+          "relevant": null,
+          "stance": "neutral",
+          "_source_type": "patent",
+          "_excerpt": "One-to-many comparisons of callers' words and/or voice prints with known words and/or voice prints to identify any substantial matches between them. When a customer communicates with a particular enti",
+          "_relevance_score": 0.316,
+          "_한글요약": "고객 통화 시 음성·단어를 기존 음성지문과 1:N 비교해 일치 여부 식별"
+        },
+        "d64e0e34-cd5d-4b27-8973-d96b4035c57a": {
+          "relevant": null,
+          "stance": "neutral",
+          "_source_type": "patent",
+          "_excerpt": "A management system for managing, streamlining and automating the process of obtaining contributions for philanthropic entities (e.g., charities and other non-profit organizations), wherein user frien",
+          "_relevance_score": 0.3039,
+          "_한글요약": "자선단체 등 비영리 기부금 모금 과정을 자동화·간소화하는 관리 시스템"
+        },
+        "f97d3f6c-6a49-4a45-87a2-79634e551cbb": {
+          "relevant": null,
+          "stance": "neutral",
+          "_source_type": "patent",
+          "_excerpt": "A shopping information providing system that receives first product information selected by a first user from among a plurality of pieces of product information included in at least one piece of categ",
+          "_relevance_score": 0.3002,
+          "_한글요약": "첫 사용자가 고른 상품 정보를 받아 처리하는 쇼핑 정보 제공 시스템"
+        },
+        "c59b2b4d-2330-4bbb-a456-97ff4c0c535e": {
+          "relevant": null,
+          "stance": "neutral",
+          "_source_type": "patent",
+          "_excerpt": "The systems and methods described generally relate to evaluating vendors. The systems and methods may comprise operations performed by a computer based system comprising various components. The operat",
+          "_relevance_score": 0.2999,
+          "_한글요약": "공급업체(vendor)를 평가하는 컴퓨터 기반 시스템·방법"
+        },
+        "0cdeb4cf-91cb-492d-8e27-30f2f59d36a2": {
+          "relevant": null,
+          "stance": "neutral",
+          "_source_type": "patent",
+          "_excerpt": "A system can include a display device and a processor. The processor can cause the display device to visually present questions to an online survey taker, receive from the online survey taker an indic",
+          "_relevance_score": 0.2991,
+          "_한글요약": "온라인 설문 응답자에게 질문을 표시하고 응답을 받는 디스플레이·프로세서 시스템"
+        },
+        "a5960388-7e0b-4284-9e72-669ea3f8e036": {
+          "relevant": null,
+          "stance": "neutral",
+          "_source_type": "patent",
+          "_excerpt": "A system and method for implementation of product searches via a search engine over a networked computer system such as the Internet. In particular, a user may execute a search for product offers that",
+          "_relevance_score": 0.2948,
+          "_한글요약": "인터넷 등 네트워크에서 검색엔진을 통해 상품 검색을 수행하는 시스템·방법"
+        }
+      },
+      "_질문_한글": "정비 기록을 검색해 수리 절차를 추천하는 시스템 (기술 구현 가능성)",
+      "_판단기준": "아래 특허들이 '정비 기록을 검색해 수리 절차를 추천하는 시스템 (기술 구현 가능성)' 를 판단하는 데 도움이 되는가?"
+    },
+    {
+      "query_id": "patent-h5",
+      "axis": "ip",
+      "query": "Recommending items to a user based on transaction history and similarity scoring.",
+      "source_types": [
+        "patent"
+      ],
+      "labels": {
+        "1a9eced2-3c51-4c6d-a3f1-b66822347597": {
+          "relevant": null,
+          "stance": "neutral",
+          "_source_type": "patent",
+          "_excerpt": "A computer-implemented method includes determining a similarity score for a product by determining a similarity between a product vector for a product and a user vector for a user, determining a recen",
+          "_relevance_score": 0.6937,
+          "_한글요약": "상품 벡터와 사용자 벡터의 유사도를 계산해 상품 유사도 점수를 산출하는 방법"
+        },
+        "5742526e-b61d-4713-b0e4-95b376b65336": {
+          "relevant": null,
+          "stance": "neutral",
+          "_source_type": "patent",
+          "_excerpt": "A system may generate a first transaction history from a plurality of records of charge. The system may select a plurality of merchants based on the plurality of records of charge, and generate a firs",
+          "_relevance_score": 0.6072,
+          "_한글요약": "결제 기록으로 거래 이력을 만들고 그를 근거로 여러 가맹점을 선별하는 시스템"
+        },
+        "71d3f37e-ef95-472f-9413-f1234e878550": {
+          "relevant": null,
+          "stance": "neutral",
+          "_source_type": "patent",
+          "_excerpt": "An online system selects content items for a user to increase probabilities of the user remembering the content items after presentation. The online system generates one or more models based on inform",
+          "_relevance_score": 0.606,
+          "_한글요약": "사용자가 콘텐츠를 더 잘 기억하도록 확률을 높여 콘텐츠를 선별하는 온라인 시스템"
+        },
+        "87602ce2-578d-4700-9388-9c002b43f342": {
+          "relevant": null,
+          "stance": "neutral",
+          "_source_type": "patent",
+          "_excerpt": "Recommendation control techniques using incremental matrix factorization and clustering are described. User latent factors and item latent factors are computed from data that denotes ratings associate",
+          "_relevance_score": 0.5643,
+          "_한글요약": "증분 행렬분해와 클러스터링을 이용한 추천 제어 — 사용자·아이템 잠재요인 계산"
+        },
+        "4c6caa1c-057a-4e4d-901d-140376c03323": {
+          "relevant": null,
+          "stance": "neutral",
+          "_source_type": "patent",
+          "_excerpt": "Analyzing a purchase decision made by a user includes tracking locations of a mobile device within a retail store to form a proximity history, the proximity history capturing information relating to i",
+          "_relevance_score": 0.555,
+          "_한글요약": "매장 내 모바일 기기 위치를 추적해 근접 이력을 만들고 구매 결정을 분석"
+        },
+        "5e967b7d-4571-4e02-b32e-b0e3bd880b37": {
+          "relevant": null,
+          "stance": "neutral",
+          "_source_type": "patent",
+          "_excerpt": "Techniques are described for collecting customer data through a software application in order to optimize registration form to maximize registration success rates, based on a user engagement score rel",
+          "_relevance_score": 0.5252,
+          "_한글요약": "가입 성공률을 높이도록 앱에서 고객 데이터를 모아 가입 양식을 최적화"
+        },
+        "55d781ba-8298-4137-9812-d48991eb3af9": {
+          "relevant": null,
+          "stance": "neutral",
+          "_source_type": "patent",
+          "_excerpt": "An online system generates metrics describing performance of a content item presented to its users by various entities based on a number of events associated with an exposed group of users presented w",
+          "_relevance_score": 0.5145,
+          "_한글요약": "노출된 콘텐츠의 이벤트 수를 근거로 콘텐츠 성과 지표를 생성하는 온라인 시스템"
+        },
+        "c078c9a3-af0c-4791-bdf4-94ed1eb1aa29": {
+          "relevant": null,
+          "stance": "neutral",
+          "_source_type": "patent",
+          "_excerpt": "One embodiment provides a system that facilitates detects and analyzes surprises in user reviews. During operation, the system stores, in a storage device, a plurality of user reviews. A user review i",
+          "_relevance_score": 0.5004,
+          "_한글요약": "사용자 리뷰에서 예상 밖 반응(surprise)을 탐지·분석하는 시스템"
+        },
+        "6c8fdf49-4d31-49b8-b9cc-052915adb2fc": {
+          "relevant": null,
+          "stance": "neutral",
+          "_source_type": "patent",
+          "_excerpt": "A system and method for facilitating user selection of items is provided. The design determines psychographic factors of a user, categorizes the user as belonging to a psychographic group based on det",
+          "_relevance_score": 0.4906,
+          "_한글요약": "사용자의 심리통계(psychographic) 요인을 판별해 유형으로 분류하고 아이템 선택을 돕는다"
+        },
+        "5c76384b-44e1-4d71-8b12-55e2c6e11865": {
+          "relevant": null,
+          "stance": "neutral",
+          "_source_type": "patent",
+          "_excerpt": "An approach is provided for distributing items via a store. A social graph associated with a user account at a store is retrieved. The social graph depicts relationships between the user account and o",
+          "_relevance_score": 0.4899,
+          "_한글요약": "스토어 계정의 소셜 그래프(관계망)를 조회해 아이템을 배포하는 방식"
+        }
+      },
+      "_질문_한글": "거래 이력과 유사도 점수로 사용자에게 상품을 추천하는 기술 (특허 중첩 위험)",
+      "_판단기준": "아래 특허들이 '거래 이력과 유사도 점수로 사용자에게 상품을 추천하는 기술 (특허 중첩 위험)' 를 판단하는 데 도움이 되는가?"
+    }
+  ]
+}
