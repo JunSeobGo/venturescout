@@ -179,11 +179,18 @@ if __name__ == "__main__":
     # `python -m pipeline.indexer`로 바로 돌릴 수 있게 한 진입점.
     # 이전에는 없어서 모듈 임포트만 되고 조용히 exit 0으로 끝났다 —
     # "돌렸는데 임베딩이 0건"의 원인이었다.
+    import argparse as _argparse
     import json as _json
     import logging as _logging
 
+    _p = _argparse.ArgumentParser(description="pgvector 임베딩 적재")
+    # 기본 256은 긴 청구항 텍스트에서 메모리를 크게 먹는다. Docker 기본 할당(≈6GB)
+    # 환경에서 exit 137(OOM)로 죽어 32로 낮춘다. 여유가 있으면 올려도 된다.
+    _p.add_argument("--batch-size", type=int, default=32, help="배치 크기 (기본 32)")
+    _args = _p.parse_args()
+
     _logging.basicConfig(level=_logging.INFO, format="%(message)s")
     _indexer = PatentIndexer()
-    _result = _indexer.run()
+    _result = _indexer.run(batch_size=_args.batch_size)
     print(_json.dumps(_result, ensure_ascii=False, indent=2))
     print(_json.dumps(_indexer.verify_sync(), ensure_ascii=False, indent=2))

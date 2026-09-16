@@ -29,9 +29,13 @@ DEFAULT_LABELSET = pathlib.Path(__file__).parent / "labels" / "retrieval_labels.
 DEFAULT_K = 5
 
 
-def load_labelset(path: str | pathlib.Path = DEFAULT_LABELSET) -> dict[str, Any]:
-    """라벨셋 JSON을 읽고 최소 스키마를 검증한다."""
-    path = pathlib.Path(path)
+def load_labelset(path: str | pathlib.Path | None = None) -> dict[str, Any]:
+    """라벨셋 JSON을 읽고 최소 스키마를 검증한다.
+
+    기본 경로를 인자 기본값으로 묶지 않는다 — 그러면 정의 시점에 고정돼
+    테스트에서 DEFAULT_LABELSET을 바꿔치기해도 반영되지 않는다.
+    """
+    path = pathlib.Path(path if path is not None else DEFAULT_LABELSET)
     if not path.exists():
         raise FileNotFoundError(
             f"라벨셋이 없다: {path}\n"
@@ -76,7 +80,7 @@ def _retrieve_ids(query: dict[str, Any], k: int) -> list[str]:
 
 
 def evaluate_retrieval(
-    path: str | pathlib.Path = DEFAULT_LABELSET,
+    path: str | pathlib.Path | None = None,
     k: int = DEFAULT_K,
 ) -> dict[str, Any]:
     """라벨셋 전체에 대해 precision@k와 contradiction_coverage를 계산한다.
