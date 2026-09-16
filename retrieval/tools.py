@@ -21,6 +21,39 @@ def _require_live_retrieval() -> None:
         )
 
 
+# 가설 코드 → stance 축 이름. structuring이 만드는 H1~H5의 axis와 같다(graph.py 참조).
+# 평가 경로(eval/labelset.py)는 축 이름을 그대로 넘기므로 폴백으로 원문을 쓴다.
+AXIS_BY_HYPOTHESIS = {
+    "H1": "customer_problem",
+    "H2": "competition",
+    "H3": "business_model",
+    "H4": "technology",
+    "H5": "ip",
+}
+
+
+def _attach_stance(rows: list[dict], hypothesis_id: str) -> None:
+    """적재 시점에 태깅해 둔 stance를 검색 결과 최상위로 끌어올린다(제자리 수정).
+
+    값은 이미 `documents.meta`에 담겨 따라 나오는데, 읽는 쪽(reranker, EvidenceItem)은
+    최상위 `stance` 키를 본다. 그 사이가 이어져 있지 않아 항상 neutral로 떨어졌고,
+    contradiction 축이 전 문서 0.5 고정이라 순위에 아무 영향을 주지 못했다(ADR-045).
+
+    축마다 다른 키(`stance_<축>`)를 쓰므로 어느 가설로 검색하는지에 따라 값이 달라진다.
+    태깅이 안 된 축·문서는 neutral이다 — 없는 판단을 지어내지 않는다.
+
+    근거 인용(`stance_<축>_span`)은 여기서 꺼내지 않는다. EvidenceItem에 담을 자리가
+    없어 지금 꺼내면 아무도 읽지 않는 값이 하나 더 생긴다 — 이 프로젝트가 반복해서
+    겪은 죽은 코드 패턴이다. Citation Accuracy 지표를 붙일 때 소비처와 함께 꺼낸다.
+    """
+    axis = AXIS_BY_HYPOTHESIS.get(hypothesis_id, hypothesis_id)
+    key = f"stance_{axis}"
+    for row in rows:
+        meta = row.get("meta")
+        meta = meta if isinstance(meta, dict) else {}
+        row["stance"] = meta.get(key) or "neutral"
+
+
 def _get_engines():
     _require_live_retrieval()
     if not hasattr(_local, "searcher"):
@@ -49,9 +82,10 @@ def retrieve(
         source_types=source_types,
     )
 
-    # stance는 아직 붙이지 않는다. NLI 백엔드를 붙여봤으나 정확도 33%(사람 라벨 대조)에
-    # 검색 지연이 +33초라 기각했다(ADR-046). reranker의 contradiction 축은 그때까지
-    # 무력 상태로 남는다 — 침묵하지 않도록 ADR §5 open과 xfail 테스트로 표시해 뒀다.
+    # stance는 적재 시점에 LLM 배치로 미리 태깅해 documents.meta에 넣어 둔다(ADR-047).
+    # 검색 시점에는 꺼내 쓰기만 하므로 지연이 0이다 — NLI를 검색 경로에 넣었다가
+    # +33초가 나왔던 방식(ADR-046)과 다른 점이 이것이다.
+    _attach_stance(raw, hypothesis_id)
     ranked = reranker.rerank(raw, prefer_contradicting=True, top_k=k)
 
     return [

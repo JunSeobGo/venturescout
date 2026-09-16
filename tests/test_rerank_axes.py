@@ -69,16 +69,7 @@ def test_contradiction_axis_promotes_contradicting_evidence():
     assert _order(ranked)[0] == "contradicts"
 
 
-@pytest.mark.xfail(
-    reason="stance를 계산하는 코드가 프로젝트에 없다. documents 검색 결과에 "
-           "stance 키가 없어 항상 neutral로 떨어지고, contradiction 축이 무력화된다. "
-           "이 테스트가 통과하기 시작하면 stance 산출이 구현됐다는 뜻이다.",
-    strict=True,
-)
-def test_document_search_results_carry_stance():
-    """검색 결과에 stance가 실려 와야 contradiction 축이 의미를 갖는다."""
-    from search.hybrid import HybridSearcher
-    import inspect
-
-    src = inspect.getsource(HybridSearcher.search_documents)
-    assert "stance" in src, "search_documents가 stance를 반환하지 않는다"
+# 이 자리에는 "search_documents 소스에 stance가 있는가"를 grep하는 xfail 테스트가
+# 있었다. 배선의 올바른 자리는 거기가 아니다 — hybrid.py는 어느 축으로 검색 중인지
+# 모르고, 축을 아는 건 hypothesis_id를 받는 retrieval.tools다. 소스를 grep하는 대신
+# 실제로 stance가 실려 오는지를 아래 test_retrieval_tools.py에서 동작으로 검증한다.
