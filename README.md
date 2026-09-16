@@ -50,7 +50,12 @@ decision을 **LLM 호출 이전에** 확정합니다. 같은 근거 → 항상 �
 | `claim_limitations.embedding` | 특허 청구항을 **구성요소 단위로 분해** | ⑤ (시그니처) |
 
 `hybrid_score = 0.6 × cosine + 0.4 × ts_rank`, HNSW + GIN 2단계 후보생성.
-rerank에는 **contradiction 축(0.2)** 을 둬서 반박 근거를 의도적으로 상위에 올립니다.
+
+> ⚠️ rerank는 4축(relevance/reliability/freshness/contradiction)으로 설계됐지만
+> **측정해보니 3축이 무력화돼 있었습니다.** reliability·freshness는 source_type별
+> 하드코딩이라 단일 스코프 쿼리 안에서 상수이고, `stance`는 **계산하는 코드가
+> 프로젝트에 없습니다.** 결과적으로 순위는 `hybrid_score`가 100% 결정합니다.
+> 가중치 14개 조합이 전부 같은 점수를 낸 것이 증거입니다 ([ADR-045](AIAgentPJ_ADR_v7.md)).
 
 ---
 
@@ -78,6 +83,7 @@ rerank에는 **contradiction 축(0.2)** 을 둬서 반박 근거를 의도적으
 | 검색 품질 개선 | relevance_score **0.16–0.21 → 0.46–0.73** |
 | 판정 캘리브레이션 | 3개 도메인 입력이 **KILL / PIVOT / PIVOT**으로 분리 (이전: 전부 KILL) |
 | Critic 컨텍스트 최적화 | **45,570 → 18,191자 (−60.1%)**, 토큰 기준은 미검증 |
+| **검색 품질 (실측)** | **P@5 0.400 / Recall@5 0.620 / MRR 0.512 / NDCG 0.548** (라벨 70건, 쿼리 7개) |
 | **검색 지연 (실측)** | **p50 95ms / p95 148ms / p99 236ms** — 이 중 임베딩이 63%(p50 60ms) |
 | 실행 상한 | 잡당 비용·LLM 호출·graph step 상한으로 폭주 차단 |
 | 테스트 | `pytest tests/` **66 passed** |
@@ -98,7 +104,7 @@ rerank에는 **contradiction 축(0.2)** 을 둬서 반박 근거를 의도적으
 | 선택 | 포기 | 이유 |
 |---|---|---|
 | **판정을 코드 규칙으로 확정**, LLM은 서술만 | LLM의 종합 판단력 | 재현성·테스트 가능성. 임계값 변경 근거가 코드에 남습니다 |
-| **rerank에 contradiction 축 추가** | 순수 relevance 정렬 | 반박 근거가 상위에 와야 Critic이 낙관 편향을 잡습니다 |
+| **rerank에 contradiction 축 추가** | 순수 relevance 정렬 | 의도는 반박 근거 상위 노출이었으나, `stance` 산출이 미구현이라 **실제로는 작동하지 않습니다**(측정으로 확인, ADR-045) |
 | **2단계 후보생성** (인덱스 → 합성식) | SQL 단순함 | 합성식을 전체 테이블 `ORDER BY`에 걸면 인덱스를 못 타 풀스캔 |
 | **프롬프트 캐싱 기각** | 입력 토큰 절감 | Sonnet 4.6 최소 캐시 prefix 1024토큰 vs 공유 prefix ~150토큰. 게다가 분석 5노드가 **병렬**이라 동시 요청이 서로의 캐시를 못 읽습니다 |
 

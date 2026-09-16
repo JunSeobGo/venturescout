@@ -417,6 +417,23 @@
 - **결과**: AWS 없이 검색 계층 전 구간 재현(시드 270 + 특허 220, 임베딩 8,342건). 실행 중 **원래 있던 버그 4건**이 드러났다 — `pipeline/indexer.py` `__main__` 부재(`python -m`이 무동작 exit 0), `eval/labelset.py` 기본 인자 조기 바인딩(테스트가 잘못된 이유로 통과), 로컬 PostgreSQL 포트 충돌, 배치 256 OOM(exit 137).
 - **남은 한계**: 사용량 누적이 전역 + lock이라 `/analyze` 동시 다발 시 잡 간 집계가 섞인다. `contextvars` 또는 job_id 스코프 분리 필요.
 
+
+### ADR-045 — (발견) 검색 품질 baseline + rerank 3축 무력화
+- **상태**: 측정 완료 / 수정 미착수
+- **맥락**: 라벨셋 70건을 채워 이 프로젝트 최초의 검색 품질 실측을 냈다.
+- **baseline (k=5, 쿼리 7개)**: `P@5 0.400 / Recall@5(pooled) 0.620 / MRR 0.512 / NDCG 0.548`
+    * 쿼리별 편차가 평균보다 중요하다 — `saas-h3`(좌석당 구독) P@5 **1.00**, `hr-h2`(글로벌 급여) 0.80 vs `saas-h1`(지식 분산) **0.00**.
+    * **어휘가 직접 겹치는 질의에 강하고 추상적 문제 진술에 약하다.** `fintech-h1`은 Recall 1.0인데 MRR 0.333 — 찾긴 했으나 3등이라 상위 노출 실패.
+    * 특허 축(`patent-h4` MRR 1.00)이 잘 나온 것은 시그니처 기능이 실제로 작동한다는 첫 증거.
+- **발견**: rerank 가중치 14개 조합이 **전부 동일한 수치**를 냈다. 극단값으로 바꿔도 순위 불변. 4축 중 3축이 후보 전체에서 상수이기 때문이다.
+    1. `reliability` — source_type별 하드코딩(seed 0.6 / patent 0.9). 노드가 단일 source_type으로 스코프하므로 한 쿼리 안에서는 상수.
+    2. `freshness` — `meta.filing_date` 동적 계산은 **정상 작동**하나 코퍼스가 HUPD 2016년 1월 한 달치라 전부 같은 해.
+    3. `contradiction` — **`stance`를 계산하는 코드가 프로젝트에 존재하지 않는다.** reranker는 읽기만 하고, persistence는 `"neutral"` 하드코딩, 적재 스크립트는 아예 넣지 않는다. 주석의 "B가 stance 태깅하며 채움"은 미구현.
+- **결과**: 순위는 `hybrid_score`가 100% 결정한다. **리랭커는 사실상 존재하지 않는 것과 같다.** README가 내세운 "contradiction 축으로 반박 근거를 상위에 올린다"는 한 번도 작동한 적이 없다.
+- **영향**: `_decide` 규칙2(KILL: high_ip + contradicting)는 **발화 불가능**, 규칙5(GO: not contradicting)는 항상 참. `contradiction_coverage`는 계산 불가.
+- **조치**: `tests/test_rerank_axes.py` 4건으로 고정. stance 부재는 strict xfail이라 구현되면 자동으로 알려준다.
+- **기각**: 어휘 휴리스틱(부정어 탐지)으로 stance를 근사하는 안 — "가설에 대한 반박"은 문서 자체의 부정성이 아니라 가설 상대적 판단이라 근사가 성립하지 않는다. 제대로 하려면 NLI 모델 또는 LLM 호출이 필요하다.
+
 ---
 
 ## 2. 레포 상태
@@ -557,6 +574,11 @@ docker compose up --build               # 또는 --force-recreate
       precision@k·contradiction_coverage가 아직 숫자로 나오지 않는다. 이게 Eval 전체의 선행조건
 - [ ] **사용량 누적이 전역** (ADR-044) — `/analyze` 동시 다발 시 잡 간 집계가 섞여
       상한이 부정확해진다. `contextvars` 또는 job_id 스코프 분리 필요
+- [ ] **stance 산출 미구현** (ADR-045) — 프로젝트 어디에도 stance를 계산하는 코드가 없다.
+      rerank contradiction 축, `_decide` 규칙2 KILL, contradiction_coverage가 모두 무력.
+      NLI 모델 또는 LLM 기반 stance 태깅이 필요하다
+- [ ] **rerank reliability/freshness 무변별** (ADR-045) — source_type별 하드코딩 +
+      코퍼스가 단일 월이라 상수. 연도를 넓혀 수집하면 freshness는 살아난다
 - [ ] **미측정 지표** — Recall@K·MRR·NDCG, Answer/Citation Accuracy, latency p50/p95/p99,
       Task Success Rate. 최적화 후 실행당 비용도 미측정(문자 수 −60%만 확인)
 - [ ] DEMO_DELAY(기본 0.4s) — 배포 시 0
