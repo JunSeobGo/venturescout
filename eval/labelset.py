@@ -156,13 +156,28 @@ def evaluate_retrieval(
     contra_labeled = sum(q["contradiction_labeled"] for q in per_query)
     contra_hits = sum(q["contradiction_hits"] for q in per_query)
 
+    # 정답이 하나도 라벨링되지 않은 쿼리는 평균에서 뺀다. 그런 쿼리는 무엇을 검색해도
+    # precision·NDCG가 0.0이라, 포함하면 **올바른 동작(관련 문서가 없으니 못 찾음)을
+    # 0점으로 처벌**하게 된다. 실제로 초판 라벨셋의 saas-h2가 그랬고, 7개 쿼리 중
+    # 하나가 0.0으로 고정되어 평균을 14%씩 끌어내렸다.
+    scored = [q for q in per_query if q["relevant_labeled"] > 0]
+    skipped = [q["query_id"] for q in per_query if q["relevant_labeled"] == 0]
+
     return {
         "k": k,
         "queries": len(per_query),
-        "precision_at_k": _mean([q["precision_at_k"] for q in per_query]),
-        "recall_at_k_pooled": _mean([q["recall_at_k_pooled"] for q in per_query]),
-        "mrr": _mean([q["reciprocal_rank"] for q in per_query]),
-        "ndcg_at_k": _mean([q["ndcg_at_k"] for q in per_query]),
+        "scored_queries": len(scored),
+        # 정답 수가 k보다 적으면 precision@k는 1.0에 도달할 수 없다. 달성률을 읽으려면
+        # 실측값이 아니라 이 천장과 비교해야 한다.
+        "precision_at_k_ceiling": _mean(
+            [min(q["relevant_labeled"], k) / k for q in scored]
+        ),
+        "precision_at_k": _mean([q["precision_at_k"] for q in scored]),
+        "recall_at_k_pooled": _mean([q["recall_at_k_pooled"] for q in scored]),
+        "mrr": _mean([q["reciprocal_rank"] for q in scored]),
+        "ndcg_at_k": _mean([q["ndcg_at_k"] for q in scored]),
+        # 정답 미라벨로 채점에서 제외된 쿼리 — 조용히 빠지면 안 되므로 드러낸다
+        "unscorable_queries": skipped,
         # 반박 근거를 라벨링하지 않았으면 None — 0.0으로 쓰면 "못 찾았다"로 오해된다.
         "contradiction_coverage": (
             round(contra_hits / contra_labeled, 3) if contra_labeled else None

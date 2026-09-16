@@ -574,7 +574,7 @@
           "_한글요약": "상품 벡터와 사용자 벡터의 유사도를 계산해 상품 유사도 점수를 산출하는 방법"
         },
         "5742526e-b61d-4713-b0e4-95b376b65336": {
-          "relevant": false,
+          "relevant": true,
           "stance": "neutral",
           "_source_type": "patent",
           "_excerpt": "A system may generate a first transaction history from a plurality of records of charge. The system may select a plurality of merchants based on the plurality of records of charge, and generate a firs",
@@ -582,7 +582,7 @@
           "_한글요약": "결제 기록으로 거래 이력을 만들고 그를 근거로 여러 가맹점을 선별하는 시스템"
         },
         "71d3f37e-ef95-472f-9413-f1234e878550": {
-          "relevant": false,
+          "relevant": null,
           "stance": "neutral",
           "_source_type": "patent",
           "_excerpt": "An online system selects content items for a user to increase probabilities of the user remembering the content items after presentation. The online system generates one or more models based on inform",
@@ -590,15 +590,15 @@
           "_한글요약": "사용자가 콘텐츠를 더 잘 기억하도록 확률을 높여 콘텐츠를 선별하는 온라인 시스템"
         },
         "87602ce2-578d-4700-9388-9c002b43f342": {
-          "relevant": true,
-          "stance": "supports",
+          "relevant": null,
+          "stance": "neutral",
           "_source_type": "patent",
           "_excerpt": "Recommendation control techniques using incremental matrix factorization and clustering are described. User latent factors and item latent factors are computed from data that denotes ratings associate",
           "_relevance_score": 0.5643,
           "_한글요약": "증분 행렬분해와 클러스터링을 이용한 추천 제어 — 사용자·아이템 잠재요인 계산"
         },
         "4c6caa1c-057a-4e4d-901d-140376c03323": {
-          "relevant": true,
+          "relevant": null,
           "stance": "neutral",
           "_source_type": "patent",
           "_excerpt": "Analyzing a purchase decision made by a user includes tracking locations of a mobile device within a retail store to form a proximity history, the proximity history capturing information relating to i",
@@ -606,7 +606,7 @@
           "_한글요약": "매장 내 모바일 기기 위치를 추적해 근접 이력을 만들고 구매 결정을 분석"
         },
         "5e967b7d-4571-4e02-b32e-b0e3bd880b37": {
-          "relevant": false,
+          "relevant": null,
           "stance": "neutral",
           "_source_type": "patent",
           "_excerpt": "Techniques are described for collecting customer data through a software application in order to optimize registration form to maximize registration success rates, based on a user engagement score rel",
@@ -614,7 +614,7 @@
           "_한글요약": "가입 성공률을 높이도록 앱에서 고객 데이터를 모아 가입 양식을 최적화"
         },
         "55d781ba-8298-4137-9812-d48991eb3af9": {
-          "relevant": false,
+          "relevant": null,
           "stance": "neutral",
           "_source_type": "patent",
           "_excerpt": "An online system generates metrics describing performance of a content item presented to its users by various entities based on a number of events associated with an exposed group of users presented w",
@@ -622,7 +622,7 @@
           "_한글요약": "노출된 콘텐츠의 이벤트 수를 근거로 콘텐츠 성과 지표를 생성하는 온라인 시스템"
         },
         "c078c9a3-af0c-4791-bdf4-94ed1eb1aa29": {
-          "relevant": false,
+          "relevant": null,
           "stance": "neutral",
           "_source_type": "patent",
           "_excerpt": "One embodiment provides a system that facilitates detects and analyzes surprises in user reviews. During operation, the system stores, in a storage device, a plurality of user reviews. A user review i",
@@ -630,7 +630,7 @@
           "_한글요약": "사용자 리뷰에서 예상 밖 반응(surprise)을 탐지·분석하는 시스템"
         },
         "6c8fdf49-4d31-49b8-b9cc-052915adb2fc": {
-          "relevant": true,
+          "relevant": null,
           "stance": "neutral",
           "_source_type": "patent",
           "_excerpt": "A system and method for facilitating user selection of items is provided. The design determines psychographic factors of a user, categorizes the user as belonging to a psychographic group based on det",
@@ -638,7 +638,7 @@
           "_한글요약": "사용자의 심리통계(psychographic) 요인을 판별해 유형으로 분류하고 아이템 선택을 돕는다"
         },
         "5c76384b-44e1-4d71-8b12-55e2c6e11865": {
-          "relevant": true,
+          "relevant": null,
           "stance": "neutral",
           "_source_type": "patent",
           "_excerpt": "An approach is provided for distributing items via a store. A social graph associated with a user account at a store is retrieved. The social graph depicts relationships between the user account and o",

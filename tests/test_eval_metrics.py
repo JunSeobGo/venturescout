@@ -200,3 +200,62 @@ def test_recall_is_none_when_nothing_labeled_relevant():
 def test_mean_skips_none_and_returns_none_when_empty():
     assert labelset._mean([1.0, None, 0.5]) == 0.75
     assert labelset._mean([None, None]) is None
+
+
+# ── 채점 불가 쿼리 제외 + 천장 ────────────────────────────────────────────────
+# 정답이 하나도 라벨링되지 않은 쿼리는 무엇을 검색해도 0.0이라, 평균에 넣으면
+# 올바른 동작(관련 문서가 없으니 못 찾음)을 0점으로 처벌한다. 초판 라벨셋의
+# saas-h2가 그랬고 7개 중 하나가 0.0 고정으로 평균을 끌어내렸다.
+
+def _fake_eval(monkeypatch, queries, retrieved_by_qid):
+    """retrieve를 가짜로 바꿔 DB 없이 evaluate_retrieval을 돌린다."""
+    monkeypatch.setattr(
+        labelset, "load_labelset", lambda path=None: {"queries": queries}
+    )
+    monkeypatch.setattr(
+        labelset, "_retrieve_ids",
+        lambda query, k: retrieved_by_qid[query["query_id"]],
+    )
+    return labelset.evaluate_retrieval()
+
+
+def _q(qid, labels):
+    return {"query_id": qid, "query": "q", "axis": "customer_problem", "labels": labels}
+
+
+def test_query_with_no_relevant_labels_is_excluded(monkeypatch):
+    result = _fake_eval(
+        monkeypatch,
+        [
+            _q("good", {"a": {"relevant": True}, "b": {"relevant": False}}),
+            _q("none", {"c": {"relevant": False}, "d": {"relevant": False}}),
+        ],
+        {"good": ["a"], "none": ["c"]},
+    )
+    assert result["queries"] == 2
+    assert result["scored_queries"] == 1
+    assert result["unscorable_queries"] == ["none"]
+    # 'none'을 포함했다면 (1.0 + 0.0) / 2 = 0.5로 깎였을 것이다
+    assert result["precision_at_k"] == 1.0
+
+
+def test_unscorable_queries_are_named_not_silently_dropped(monkeypatch):
+    result = _fake_eval(
+        monkeypatch,
+        [_q("a", {"x": {"relevant": True}}), _q("b", {"y": {"relevant": None}})],
+        {"a": ["x"], "b": ["y"]},
+    )
+    assert result["unscorable_queries"] == ["b"]
+
+
+def test_precision_ceiling_reflects_scarce_labels(monkeypatch):
+    """정답이 2건뿐이면 P@5의 천장은 0.4다 — 실측 0.4는 만점이지 실패가 아니다."""
+    labels = {f"d{i}": {"relevant": i < 2} for i in range(10)}
+    result = _fake_eval(monkeypatch, [_q("scarce", labels)], {"scarce": ["d0", "d1"]})
+    assert result["precision_at_k_ceiling"] == 0.4
+
+
+def test_ceiling_is_one_when_labels_are_plentiful(monkeypatch):
+    labels = {f"d{i}": {"relevant": True} for i in range(9)}
+    result = _fake_eval(monkeypatch, [_q("many", labels)], {"many": list(labels)[:5]})
+    assert result["precision_at_k_ceiling"] == 1.0
