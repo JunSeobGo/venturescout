@@ -566,8 +566,8 @@
       ],
       "labels": {
         "1a9eced2-3c51-4c6d-a3f1-b66822347597": {
-          "relevant": false,
-          "stance": "neutral",
+          "relevant": true,
+          "stance": "supports",
           "_source_type": "patent",
           "_excerpt": "A computer-implemented method includes determining a similarity score for a product by determining a similarity between a product vector for a product and a user vector for a user, determining a recen",
           "_relevance_score": 0.6937,
