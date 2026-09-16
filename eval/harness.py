@@ -80,10 +80,28 @@ def groundedness(runs: list[AgentRun]) -> float:
 
 
 def overclaim_count(runs: list[AgentRun]) -> int:
-    """overclaim = 근거 없이(또는 빈약하게) 높은 confidence를 주장하는 run 수.
-    프록시: grounded_on 비었는데 confidence가 low가 아닌 경우. (ADR-014 정직성 위반)
-    ※ AgentRun.grounded_on은 min_length=1이라 빈 경우가 계약상 없음 → 실질 0."""
-    return sum(1 for r in runs if not r.grounded_on and r.confidence != "low")
+    """금지된 단정 표현이 검출된 run 수 (`overclaim_flag`).
+
+    이전 정의는 "grounded_on 비었는데 confidence≠low"였는데, `grounded_on`이 계약상
+    min_length=1이라 **구조적으로 항상 0**이었다. 지금은 graph._overclaim_audit()이
+    agents.guardrails.BANNED_CLAIMS로 실제 문구를 검사해 flag를 세운다.
+    """
+    return sum(1 for r in runs if r.overclaim_flag)
+
+
+def overclaim_rate(runs: list[AgentRun]) -> float:
+    """run 중 과장 표현이 검출된 비율. 낮을수록 정직한 출력."""
+    if not runs:
+        return 0.0
+    return round(overclaim_count(runs) / len(runs), 3)
+
+
+def overclaim_phrases(runs: list[AgentRun]) -> dict[str, int]:
+    """검출된 금지 표현별 빈도 — 어떤 표현이 실제로 나오는지 봐야 목록을 튜닝할 수 있다."""
+    found: Counter[str] = Counter()
+    for run in runs:
+        found.update(run.output_json.get("_overclaim_phrases") or [])
+    return dict(found)
 
 
 # ── 헤드라인: Critic ON/OFF 비교 ──
@@ -111,15 +129,23 @@ def _compare_once(idea: dict) -> tuple[dict, list[AgentRun]]:
     off_decision = _naive_decision(off_runs)
     on_decision = critic.decision if critic else None
 
+    on_runs = on_state.get("agent_runs", [])
+    # ⚠️ overclaim은 ON/OFF "감소량"이 아니다. Critic은 다른 에이전트의 출력 텍스트를
+    #    다시 쓰지 않으므로 분석 5노드의 과장 표현은 양쪽에서 같다(LLM 비결정성 제외).
+    #    Critic이 실제로 교정하는 건 **최종 판정**이고, 그건 decision_changed가 잡는다.
+    #    여기서는 분석 노드와 critic 자신의 과장 비율을 각각 관측값으로만 남긴다.
     comparison = {
         "off_decision": off_decision,
         "on_decision": on_decision,
         "decision_changed": off_decision != on_decision,
         "objections_added": len(critic.objections) if critic else 0,
-        "overclaims_in_off": overclaim_count(off_runs),
+        "overclaim_rate_analysis": overclaim_rate(off_runs),
+        "overclaim_rate_critic": overclaim_rate(
+            [r for r in on_runs if r.agent_name == "critic"]
+        ),
         "critic_latency_overhead_s": round(on_latency - off_latency, 4),
     }
-    return comparison, on_state.get("agent_runs", [])
+    return comparison, on_runs
 
 
 def compare_critic(idea: dict) -> dict:
@@ -175,16 +201,20 @@ def evaluate(idea: dict, n: int = DEFAULT_REPEAT) -> dict:
         off_runs = off_state.get("agent_runs", [])
         critic: Optional[CriticResult] = on_state.get("critic")
         off_decision = _naive_decision(off_runs)
+        on_runs = on_state.get("agent_runs", [])
         singles.append({
             "off_decision": off_decision,
             "on_decision": critic.decision if critic else None,
             "decision_changed": off_decision != (critic.decision if critic else None),
             "objections_added": len(critic.objections) if critic else 0,
-            "overclaims_in_off": overclaim_count(off_runs),
+            "overclaim_rate_analysis": overclaim_rate(off_runs),
+            "overclaim_rate_critic": overclaim_rate(
+                [r for r in on_runs if r.agent_name == "critic"]
+            ),
             "critic_latency_overhead_s": round(on_latency - off_latency, 4),
         })
         if i == 0:
-            first_runs = on_state.get("agent_runs", [])
+            first_runs = on_runs
             first_on_latency = on_latency
 
     changes = [s["decision_changed"] for s in singles]
@@ -197,6 +227,9 @@ def evaluate(idea: dict, n: int = DEFAULT_REPEAT) -> dict:
             "json_validity": json_validity(first_runs),
             "groundedness": groundedness(first_runs),
             "overclaim_count": overclaim_count(first_runs),
+            "overclaim_rate": overclaim_rate(first_runs),
+            # 어떤 표현이 실제로 검출됐는지 — BANNED_CLAIMS 튜닝 근거
+            "overclaim_phrases": overclaim_phrases(first_runs),
         },
         # ★ 헤드라인 (ADR-019/030) — N회 분포 집계
         "multiagent_effect": {
@@ -219,11 +252,32 @@ def evaluate(idea: dict, n: int = DEFAULT_REPEAT) -> dict:
                 "calls": first_cost["calls"],
             },
         },
-        "retrieval_metrics": {
-            # TODO(승격): 정답 라벨셋 필요 — "이 쿼리엔 이 문서가 적합"이 있어야 계산 가능.
+        # 라벨셋이 있으면 실측, 없으면 사유를 담아 반환한다(조용한 None 금지).
+        "retrieval_metrics": retrieval_metrics(),
+    }
+
+
+def retrieval_metrics(k: int = 5) -> dict:
+    """검색 품질 지표. 라벨셋이 없으면 계산 대신 이유를 돌려준다.
+
+    LLM을 쓰지 않아 잡 평가와 독립적으로 돌릴 수 있다 — `python -m eval.labelset`.
+    """
+    from eval.labelset import evaluate_retrieval  # 순환 import 방지용 지연 import
+
+    try:
+        result = evaluate_retrieval(k=k)
+    except FileNotFoundError as exc:
+        return {
             "precision_at_k": None,
             "contradiction_coverage": None,
-        },
+            "reason": f"라벨셋 없음 — eval/build_labelset.py로 생성 필요 ({exc.args[0].splitlines()[0]})",
+        }
+    return {
+        "k": result["k"],
+        "queries": result["queries"],
+        "precision_at_k": result["precision_at_k"],
+        "contradiction_coverage": result["contradiction_coverage"],
+        "unlabeled_in_topk": result["unlabeled_in_topk"],
     }
 
 
