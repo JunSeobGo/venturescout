@@ -463,6 +463,36 @@
 
 ---
 
+### ADR-047 — (채택) LLM 배치 stance 태깅 + 모델 티어 선택
+- **상태**: accepted (business_model 축 검증 완료, 전체 코퍼스 적용 대기)
+- **맥락**: ADR-046에서 예고한 방식 B를 실행했다. 전체 890쌍($0.21)을 지르기 전에 한 축(business_model × seed_review 90건, 9콜)만 돌려 검증했다. 동시에 "Haiku로 충분한가"를 함께 쟀다.
+- **정답을 어디서 구했나 — 손라벨이 쓸 수 없었다**:
+    ```
+    사람 stance 라벨   supports 13 / neutral 57 / contradicts 0
+    ```
+    `label_cli.py`는 `relevant=y`일 때만 stance를 묻고, 57건의 neutral은 대부분 도구 초기값이다. 실제 사람 판단은 supports 13건뿐이고 **전부 같은 클래스**라 3-class 채점이 성립하지 않는다. 대신 수집 시점에 붙은 `meta.issue_type`으로 규칙 기반 프록시 정답을 만들었다 — Price·Pricing_Complexity·Contract_Terms 태그 = contradicts. 추가 비용 0.
+- **코퍼스 편향 발견**: `seed_review` 90건이 **전부 `sentiment: negative`**다. 그래서 customer_problem 축("고객이 이 문제를 반복적으로 겪는다")에서는 모든 문서가 구조적으로 supports가 되어 stance의 변별력이 0이다. contradicts가 나오는 축은 business_model 쪽이다.
+- **측정 결과 — 프롬프트가 모델보다 큰 변수였다**:
+    ```
+    실행           정확도   정밀도   재현율     F1   인용충실도
+    haiku  v1      0.667   0.898   0.647  0.752       -
+    sonnet v1      0.333   1.000   0.118  0.211       -
+    haiku  v2      0.867   0.912   0.912  0.912   67/68
+    sonnet v2      0.911   0.955   0.926  0.940   65/66
+                                              (기저선 0.756)
+    ```
+    v1 프롬프트에는 "확신이 없으면 neutral로 둔다"가 있었다. Sonnet은 이 지시를 문자 그대로 따라 90건 중 contradicts를 8건만 냈고(Haiku는 49건), 불일치 44건 중 41건이 `contradicts→neutral` 한 방향이었다. v2에서 축별 판정 기준을 명시하자 sonnet 정확도가 0.333 → 0.911로 올랐다.
+    ```
+    sonnet v1 ↔ v2 일치율   0.356   ← 프롬프트가 판정의 64%를 뒤집었다
+    haiku v2 ↔ sonnet v2    0.956   ← 같은 프롬프트면 티어 차이는 작다
+    ```
+- **결정 1 — stance 태깅은 haiku를 쓴다**: F1 차이 0.028에 비용은 2.8배($0.0445 vs $0.1263 / 9콜)다. 이 용도에 필요한 건 정밀도이고 haiku 0.912면 기저율 0.756을 충분히 넘는다.
+- **결정 2 — 근거 인용(span)을 함께 받는다**: 호출 수는 그대로고 출력 토큰만 는다. 인용이 원문에 실제로 존재하는 비율이 **67/68, 65/66**으로 환각이 아님을 확인했다. `stance_<축>_span` 키로 저장하며 Citation Accuracy 지표의 입력으로 쓴다.
+- **기각한 대안 — 본문 청킹**: 문서 길이는 p95 ~1,100자(최대 1,847자)로 이미 원자 단위에 가깝다. 600 → 1,100자로 늘렸을 때 정확도는 0.656 → 0.667로 +0.011에 그쳤고, 불일치 44건 중 41건이 한 방향이었다(길이 문제라면 방향성이 없어야 한다). 문장 단위로 쪼개면 판정 단위가 90 → 540건으로 늘어 ADR-046에서 기각한 "문서당 처리"를 반복하게 된다. 긴 문서 분해가 필요한 자리(특허)는 `patent_claims` 4,075건으로 이미 되어 있다.
+- **교훈**: 모델 티어를 비교하려다 **프롬프트 보정 문제를 먼저 찾았다.** 티어 차이(0.956 일치)보다 프롬프트 차이(0.356 일치)가 훨씬 컸다. 값싼 모델이 비싼 모델보다 나아 보였던 v1의 결과는 능력 차이가 아니라 지시 순응도 차이였다 — 이걸 모르고 "haiku가 더 정확하다"로 결론냈으면 틀린 ADR이 남았을 것이다.
+
+---
+
 ## 2. 레포 상태
 
 **구조** (push 완료, `de-ai-AIAgentPJ-team4/venturescout`)
@@ -601,9 +631,11 @@ docker compose up --build               # 또는 --force-recreate
       precision@k·contradiction_coverage가 아직 숫자로 나오지 않는다. 이게 Eval 전체의 선행조건
 - [ ] **사용량 누적이 전역** (ADR-044) — `/analyze` 동시 다발 시 잡 간 집계가 섞여
       상한이 부정확해진다. `contextvars` 또는 job_id 스코프 분리 필요
-- [ ] **stance 산출 미구현** (ADR-045, ADR-046 NLI 기각) — LLM 배치 태깅(방식 B, /usr/bin/bash.61 1회) 대기. — 프로젝트 어디에도 stance를 계산하는 코드가 없다.
-      rerank contradiction 축, `_decide` 규칙2 KILL, contradiction_coverage가 모두 무력.
-      NLI 모델 또는 LLM 기반 stance 태깅이 필요하다
+- [ ] **stance 전체 코퍼스 미적용** (ADR-045 → 046 기각 → 047 채택) — LLM 배치 태깅이
+      business_model 축 90건에서 F1 0.912로 검증됐으나(ADR-047) 아직 그 축만 적재돼 있다.
+      나머지 800쌍(약 $0.40, haiku)을 돌리기 전까지 rerank contradiction 축, `_decide`
+      규칙2 KILL, contradiction_coverage는 여전히 무력이다.
+      선행: `retrieval`이 `meta.stance_<축>`을 읽도록 배선하는 작업이 아직 없다
 - [ ] **rerank reliability/freshness 무변별** (ADR-045) — source_type별 하드코딩 +
       코퍼스가 단일 월이라 상수. 연도를 넓혀 수집하면 freshness는 살아난다
 - [ ] **미측정 지표** — Recall@K·MRR·NDCG, Answer/Citation Accuracy, latency p50/p95/p99,

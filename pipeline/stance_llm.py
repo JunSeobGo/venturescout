@@ -39,6 +39,35 @@ AXIS_STATEMENTS = {
 }
 
 # 어떤 source_type을 어떤 축으로 태깅할지 — 노드의 검색 스코프와 맞춘다.
+# 축별 판정 기준. 초판은 "확신이 없으면 neutral로 둔다"는 한 줄이 전부였는데,
+# 그 지시를 Sonnet이 문자 그대로 따르면서 90건 중 contradicts를 8건만 냈다
+# (Haiku는 49건). 불일치 44건 중 41건이 contradicts→neutral 한 방향이었다.
+# 모델 능력 차이가 아니라 **프롬프트가 neutral로 쏠려 있었던 것**이라, 축마다
+# 무엇이 반박/지지에 해당하는지를 명시해 판단 기준을 프롬프트 밖으로 꺼낸다.
+AXIS_CRITERIA = {
+    "customer_problem": {
+        "supports": "반복되는 불편, 시간·비용 손실, 우회 작업(workaround)을 언급한다",
+        "contradicts": "그 문제가 없거나 사소하다, 기존 방식으로 충분하다고 말한다",
+    },
+    "competition": {
+        "supports": "기존 대안의 결함·공백·미충족 요구를 드러낸다",
+        "contradicts": "기존 대안이 이미 충분하다거나 시장이 포화라고 말한다",
+    },
+    "business_model": {
+        "supports": "가격이 값어치를 한다, 좌석당 구독이 무리 없다고 평가한다",
+        "contradicts": "가격 수준·가격 구조의 복잡성·계약 조건에 불만을 제기하거나, "
+                       "상위 티어에서만 기능을 열어줘 하위 플랜이 쓸 수 없다고 지적한다",
+    },
+    "technology": {
+        "supports": "해당 역량이 이미 구현·구동된 사례를 보여준다",
+        "contradicts": "미해결 기술 난제나 구현 한계를 지적한다",
+    },
+    "ip": {
+        "supports": "청구항이 해당 기법을 포괄해 침해 위험을 시사한다",
+        "contradicts": "해당 기법이 청구 범위 밖이거나 이미 공지기술임을 시사한다",
+    },
+}
+
 SCOPE = {
     "seed_review": ["customer_problem", "business_model"],
     "seed_competitor": ["competition", "business_model"],
@@ -78,23 +107,34 @@ def fetch_targets(conn, source_types: list[str] | None = None) -> list[dict]:
     ]
 
 
-def tag_batch(axis: str, docs: list[dict], model_tier: str = "sonnet") -> dict[str, str]:
-    """한 축의 문서 묶음을 1콜로 판정한다."""
+def tag_batch(
+    axis: str, docs: list[dict], model_tier: str = "sonnet"
+) -> dict[str, tuple[str, str]]:
+    """한 축의 문서 묶음을 1콜로 판정한다. document_id -> (stance, 근거 인용)."""
     statement = AXIS_STATEMENTS[axis]
+    crit = AXIS_CRITERIA[axis]
     numbered = "\n\n".join(f"[{i}] {d['text']}" for i, d in enumerate(docs, 1))
     system = (
-        "너는 근거 분류기다. 각 문서가 주어진 가설을 지지하는지, 반박하는지, "
-        "중립인지 판정한다. 논리적 함의가 아니라 **증거로서의 방향**을 본다. "
-        "가설을 뒷받침하는 정황이면 supports, 가설이 틀렸음을 시사하면 contradicts, "
-        "관련은 있으나 방향이 없으면 neutral이다. "
-        "확신이 없으면 neutral로 둔다 — 근거 없는 contradicts는 잘못된 판정을 부른다. "
+        "너는 근거 분류기다. 각 문서가 주어진 가설에 대해 어느 방향의 증거인지 판정한다. "
+        "논리적 함의가 아니라 **증거로서의 방향**을 본다. "
+        "아래 판정 기준에 해당하면 주저하지 말고 supports 또는 contradicts로 표시하라. "
+        "기준 어디에도 해당하지 않을 때만 neutral이다 — neutral은 기본값이 아니라 "
+        "'이 축과 무관하다'는 별도의 판정이다.\n"
+        "판정마다 그 근거가 된 부분을 문서에서 **그대로 인용**해 함께 낸다. "
+        "인용할 대목이 없으면 그 판정은 neutral이어야 한다.\n"
         "설명 없이 JSON object 하나만 반환한다."
     )
     user = (
         f"가설: {statement}\n\n"
+        f"supports 기준 : {crit['supports']}\n"
+        f"contradicts 기준: {crit['contradicts']}\n"
+        f"neutral        : 위 두 기준 어디에도 해당하지 않는다\n\n"
         f"아래 {len(docs)}개 문서 각각을 판정하라.\n"
-        '반환 형식: {"1": "supports", "2": "neutral", ...} — 키는 문서 번호 문자열.\n'
-        f"값은 supports / contradicts / neutral 중 하나다.\n\n{numbered}"
+        '반환 형식: {"1": {"stance": "contradicts", "span": "원문 인용"}, ...}\n'
+        "  - 키는 문서 번호 문자열\n"
+        "  - stance는 supports / contradicts / neutral 중 하나\n"
+        "  - span은 해당 문서에서 그대로 옮긴 200자 이내 인용. neutral이면 빈 문자열\n\n"
+        f"{numbered}"
     )
     out = invoke_claude_json(
         system=system, user=user, model_tier=model_tier, temperature=0.0
@@ -102,8 +142,19 @@ def tag_batch(axis: str, docs: list[dict], model_tier: str = "sonnet") -> dict[s
 
     result = {}
     for i, doc in enumerate(docs, 1):
-        label = str(out.get(str(i), "neutral")).strip().lower()
-        result[doc["document_id"]] = label if label in VALID else "neutral"
+        item = out.get(str(i))
+        # 구형 포맷(문자열만)도 받아들인다 — 프롬프트 변경 전 실행과 비교할 때 필요하다.
+        if isinstance(item, str):
+            label, span = item, ""
+        elif isinstance(item, dict):
+            label, span = item.get("stance", "neutral"), item.get("span", "")
+        else:
+            label, span = "neutral", ""
+        label = str(label).strip().lower()
+        result[doc["document_id"]] = (
+            label if label in VALID else "neutral",
+            str(span or "")[:400],
+        )
     return result
 
 
@@ -139,8 +190,9 @@ def main() -> None:
 
     calls = -(-len(targets) // BATCH)
     p_in, p_out = _price(args.tier)
-    # 문서 DOC_CHARS자 × BATCH + 지시문 ~400자를 영문 3.6자/토큰으로 환산. 출력은 판정만이라 ~120토큰.
-    est = calls * ((DOC_CHARS * BATCH + 400) / 3.6 / 1e6 * p_in + 120 / 1e6 * p_out)
+    # 문서 DOC_CHARS자 × BATCH + 지시문 ~700자를 영문 3.6자/토큰으로 환산.
+    # 출력은 판정 + 근거 인용이라 문서당 ~60토큰으로 본다.
+    est = calls * ((DOC_CHARS * BATCH + 700) / 3.6 / 1e6 * p_in + BATCH * 60 / 1e6 * p_out)
     print(f"태깅 대상 {len(targets)}쌍 → {calls}콜  [{args.tier}]  예상 ${est:.2f}")
     if args.dry_run:
         return
@@ -153,25 +205,27 @@ def main() -> None:
     for t in targets:
         by_axis.setdefault(t["axis"], []).append(t)
 
-    updates: list[tuple[str, str, str]] = []   # (stance, document_id, axis)
+    updates: list[tuple[str, str, str, str]] = []   # (stance, span, document_id, axis)
     done = 0
     for axis, docs in by_axis.items():
         for i in range(0, len(docs), BATCH):
             chunk = docs[i : i + BATCH]
-            for doc_id, stance in tag_batch(axis, chunk, args.tier).items():
-                updates.append((stance, doc_id, axis))
+            for doc_id, (stance, span) in tag_batch(axis, chunk, args.tier).items():
+                updates.append((stance, span, doc_id, axis))
             done += len(chunk)
             snap = usage_snapshot()
             print(f"  {axis:<18} {done}/{len(targets)}  누적 ${snap['cost_usd']:.4f}")
 
     # 축별 결과를 documents.meta에 넣는다 — 컬럼 추가 없이 스키마를 건드리지 않는다.
+    # 판정과 근거를 별도 키로 나눈다(stance_<축> / stance_<축>_span). 한 객체로 묶으면
+    # 기존에 문자열을 읽던 쪽이 깨지는데, 지금 그 대가를 치를 이유가 없다.
     with conn.cursor() as cur:
-        for stance, doc_id, axis in updates:
+        for stance, span, doc_id, axis in updates:
+            key = f"stance_{axis}{args.tag_suffix}"
             cur.execute(
-                "UPDATE documents SET meta = jsonb_set("
-                "  COALESCE(meta,'{}'::jsonb), %s, to_jsonb(%s::text), true) "
+                "UPDATE documents SET meta = COALESCE(meta,'{}'::jsonb) || %s::jsonb "
                 "WHERE document_id = %s",
-                ([f"stance_{axis}{args.tag_suffix}"], stance, doc_id),
+                (json.dumps({key: stance, f"{key}_span": span}), doc_id),
             )
     conn.commit()
 
