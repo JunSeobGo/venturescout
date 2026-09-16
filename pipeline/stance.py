@@ -1,4 +1,12 @@
-"""stance 산출 — NLI(자연어 추론) 모델로 supports / contradicts / neutral 판정.
+"""stance 산출 — supports / contradicts / neutral 판정.
+
+⚠️ **현재 검색 경로에 배선돼 있지 않다.** 아래 NLI 백엔드를 붙여 측정한 결과
+   정확도 33%(사람 라벨 21건 대조, supports 13건을 전부 놓침)에 검색 지연
+   +33초라 기각했다(ADR-046). LLM 백엔드로 교체 예정이며, 그때 아래
+   임계값→라벨 변환 로직(_LABELS / STANCE_MIN_CONFIDENCE)은 그대로 재사용한다.
+   테스트(tests/test_stance.py)가 그 규칙을 고정하고 있다.
+
+NLI 백엔드(기각):
 
 ADR-045에서 드러난 구멍을 메운다. 이 프로젝트에는 stance를 **계산하는 코드가
 아예 없었다** — reranker는 읽기만 하고, persistence는 "neutral" 하드코딩,

@@ -49,15 +49,9 @@ def retrieve(
         source_types=source_types,
     )
 
-    # stance를 rerank **이전에** 붙인다. reranker의 contradiction 축이 이 값을 읽는데,
-    # documents 검색 결과에는 stance 키가 없어 지금까지 항상 neutral로 떨어졌다
-    # (ADR-045: 축이 상수라 순위에 아무 영향도 못 줬다).
-    from pipeline.stance import get_tagger      # 순환 import 방지용 지연 import
-
-    stances = get_tagger().tag(query, [str(item.get("clean_text") or "") for item in raw])
-    for item, stance in zip(raw, stances):
-        item["stance"] = stance
-
+    # stance는 아직 붙이지 않는다. NLI 백엔드를 붙여봤으나 정확도 33%(사람 라벨 대조)에
+    # 검색 지연이 +33초라 기각했다(ADR-046). reranker의 contradiction 축은 그때까지
+    # 무력 상태로 남는다 — 침묵하지 않도록 ADR §5 open과 xfail 테스트로 표시해 뒀다.
     ranked = reranker.rerank(raw, prefer_contradicting=True, top_k=k)
 
     return [
