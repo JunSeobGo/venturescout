@@ -6,6 +6,7 @@ import os
 import threading
 import uuid
 
+from pipeline.persistence import persist_ip_overlap_candidates
 from shared.contracts import EvidenceItem, IPOverlapCandidate
 
 # psycopg2 연결은 스레드 안전하지 않으므로 스레드마다 별도 인스턴스를 유지한다.
@@ -132,6 +133,18 @@ def vector_search(
             break
 
     plan_technical_element = technical_elements[0]
+
+    # 후보를 DB에도 남긴다. 이 프로젝트의 시그니처 기능(claim → limitation 분해로
+    # 중첩 후보를 짚는 것)의 산출물이 지금까지 메모리에만 있고 `ip_overlap_candidates`
+    # 테이블은 계속 비어 있었다 — "무엇이 겹쳤는가"를 사후에 확인할 수가 없었다.
+    # 적재 실패는 분석을 깨뜨리지 않는다(내부에서 잡고 경고만 남긴다).
+    persist_ip_overlap_candidates(
+        job_id=job_id,
+        hypothesis_id=hypothesis_id,
+        plan_technical_element=plan_technical_element,
+        rows=deduped,
+    )
+
     return [
         IPOverlapCandidate(
             candidate_id=str(uuid.uuid4()),

@@ -150,6 +150,62 @@ def create_agent_run(
 
 # ── ip_overlap_candidates ────────────────────────────────────────────────
 
+def persist_ip_overlap_candidates(
+    *,
+    job_id: str,
+    hypothesis_id: str,
+    plan_technical_element: str,
+    rows: list[dict],
+) -> list[str]:
+    """그래프가 이미 만든 IPOverlapCandidate를 DB에 남긴다(best-effort).
+
+    시그니처 기능(claim → limitation 분해로 중첩 후보를 짚는 것)의 산출물이
+    지금까지 **메모리에만 존재하고 DB에는 한 행도 안 쌓였다.** `ip_overlap_candidates`에
+    INSERT하는 `create_ip_overlap_candidates`의 호출처는 `find_ip_overlap_candidates`
+    하나뿐인데, 그래프는 그쪽이 아니라 `retrieval.tools.vector_search`를 쓴다.
+    그래서 "무엇이 겹쳤는가"를 사후에 확인할 방법이 없었다(ADR §5 open 항목).
+
+    `find_ip_overlap_candidates`로 갈아타지 않고 별도 함수를 두는 이유: 그쪽은
+    rerank도 특허 단위 중복 제거도 하지 않아 **순위가 달라진다.** 에이전트가 실제로
+    본 후보를 그대로 남기는 것이 감사 기록의 목적에 맞다.
+
+    적재 실패가 분석을 깨뜨리면 안 된다 — 기록은 부가 기능이다. 대신 조용히
+    넘기지 않고 경고를 남긴다(죽은 코드가 소리 없이 남는 일을 반복하지 않기 위해).
+    """
+    if not rows or not job_id:
+        return []
+    try:
+        conn = get_connection()
+    except Exception as exc:
+        _logger.warning("[PERSIST SKIP] ip_overlap_candidates DB 연결 실패 — job=%s error=%s",
+                        job_id, exc)
+        return []
+
+    try:
+        hyp_uuid = _resolve_hypothesis_uuid(conn, job_id, hypothesis_id)
+        if not hyp_uuid:
+            # structuring이 hypotheses 행을 남기지 않았으면 FK를 만족할 수 없다.
+            _logger.warning("[PERSIST SKIP] ip_overlap_candidates — hypothesis %s 미적재 (job=%s)",
+                            hypothesis_id, job_id)
+            return []
+        ids = create_ip_overlap_candidates(
+            conn,
+            job_id=job_id,
+            hypothesis_id=hyp_uuid,
+            plan_technical_element=plan_technical_element,
+            candidates=rows,
+        )
+        _logger.info("[PERSIST OK] ip_overlap_candidates %d건 — job=%s", len(ids), job_id)
+        return ids
+    except Exception as exc:
+        conn.rollback()
+        _logger.error("[PERSIST ERROR] ip_overlap_candidates INSERT 실패 — job=%s error=%s",
+                      job_id, exc)
+        return []
+    finally:
+        conn.close()
+
+
 def create_ip_overlap_candidates(
     conn,
     *,

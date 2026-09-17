@@ -714,9 +714,12 @@ docker compose up --build               # 또는 --force-recreate
       H4(tech)·H5(ip)는 근거 0건 → graceful skip → 판정이 항상 `more_research`로 고정된다.
       복원하려면 `data/collect_from_bigquery.py`로 재수집(GCP BigQuery, AWS와 별개 과금).
       이때 추천 CPC 실제 건수 dry run(ADR-003)도 같이 해야 한다
-- [ ] **`ip_overlap_candidates` 미적재** — IP 노드의 vector_search 후보가 테이블에 안 쌓인다
-      (항상 0건). `find_ip_overlap_candidates()`가 그래프에서 미호출. 시그니처 기능의
-      산출물이 DB에 남지 않아 사후 검증·평가가 불가능하다
+- [x] **`ip_overlap_candidates` 미적재** — 해결. `find_ip_overlap_candidates()`가 그래프에서
+      미호출인 게 맞았고(INSERT 경로가 그쪽에만 있었다), 그래프는 `vector_search`를 쓴다.
+      `find_ip_overlap_candidates`로 갈아타지 않고 `persist_ip_overlap_candidates()`를 따로
+      뒀다 — 그쪽은 rerank도 특허 단위 중복 제거도 하지 않아 **순위가 달라진다.**
+      감사 기록은 에이전트가 실제로 본 후보와 같아야 한다. 적재 실패는 분석을 깨뜨리지
+      않되(best-effort) 경고는 남긴다
 - [ ] **LLM 출력 truncation / strict raise** (ADR-036/037) — critic 컨텍스트 축소(-60%)로
       완화됐으나 근본 해결은 (a) LLM이 narrative 필드만 내게 출력 축소 또는
       (b) 파싱 실패 시 코드 default_output 폴백
