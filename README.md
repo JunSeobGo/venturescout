@@ -51,11 +51,21 @@ decision을 **LLM 호출 이전에** 확정합니다. 같은 근거 → 항상 �
 
 `hybrid_score = 0.6 × cosine + 0.4 × ts_rank`, HNSW + GIN 2단계 후보생성.
 
-> ⚠️ rerank는 4축(relevance/reliability/freshness/contradiction)으로 설계됐지만
-> **측정해보니 3축이 무력화돼 있었습니다.** reliability·freshness는 source_type별
-> 하드코딩이라 단일 스코프 쿼리 안에서 상수이고, `stance`는 **계산하는 코드가
-> 프로젝트에 없습니다.** 결과적으로 순위는 `hybrid_score`가 100% 결정합니다.
-> 가중치 14개 조합이 전부 같은 점수를 낸 것이 증거입니다 ([ADR-045](AIAgentPJ_ADR_v7.md)).
+> ⚠️ **명목 가중치가 실제 가중치가 아니었습니다.** 두 항의 스케일이 다릅니다 —
+> 상위 20건에서 `1-cosine`의 폭은 0.17인데 `ts_rank`는 0.73~0.84입니다. 순위를
+> 가르는 건 절대값이 아니라 폭이라, 0.4를 곱한 키워드가 실제로는 순위 변별의
+> **74~77%**를 차지했습니다(`seed_review`만 33%). 전역 상수 하나가 코퍼스마다
+> 다르게 동작한 셈입니다. 후보군 안에서 각 항을 0~1로 펴는 **min-max 정규화**로
+> 바꿨고(`FUSION_MODE`로 RRF·기존 방식 전환 가능), 그제서야 가중치 스윕이 곡선을
+> 그립니다 ([ADR-049](AIAgentPJ_ADR_v7.md)).
+>
+> rerank 4축 중 `stance`는 오랫동안 **계산하는 코드가 없어** contradiction 축이
+> 죽어 있었습니다. NLI 모델은 정확도 33%로 기각했고([ADR-046](AIAgentPJ_ADR_v7.md)),
+> 적재 시점 LLM 배치 태깅으로 F1 0.912를 확인해 채택했습니다
+> ([ADR-047](AIAgentPJ_ADR_v7.md)). 단 축마다 변별력이 달라 특허 축
+> (`technology`/`ip`)은 판정이 한쪽으로 쏠려 기각했습니다
+> ([ADR-048](AIAgentPJ_ADR_v7.md)). reliability·freshness는 여전히 source_type별
+> 하드코딩이라 단일 스코프 쿼리 안에서 상수입니다.
 
 ---
 
@@ -83,19 +93,28 @@ decision을 **LLM 호출 이전에** 확정합니다. 같은 근거 → 항상 �
 | 검색 품질 개선 | relevance_score **0.16–0.21 → 0.46–0.73** |
 | 판정 캘리브레이션 | 3개 도메인 입력이 **KILL / PIVOT / PIVOT**으로 분리 (이전: 전부 KILL) |
 | Critic 컨텍스트 최적화 | **45,570 → 18,191자 (−60.1%)**, 토큰 기준은 미검증 |
-| **검색 품질 (실측)** | **P@5 0.400 / Recall@5 0.620 / MRR 0.512 / NDCG 0.548** (라벨 70건, 쿼리 7개) |
+| **검색 품질 (실측)** | **P@5 0.400 / Recall@5 0.620 / MRR 0.512 / NDCG 0.548** (라벨 70건, 쿼리 7개) — 아래 단서 참조 |
 | **검색 지연 (실측)** | **p50 95ms / p95 148ms / p99 236ms** — 이 중 임베딩이 63%(p50 60ms) |
 | 실행 상한 | 잡당 비용·LLM 호출·graph step 상한으로 폭주 차단 |
-| 테스트 | `pytest tests/` **66 passed** |
+| 테스트 | `pytest tests/` **120 passed** |
 
 > **데이터 범위** — 특허는 HUPD(Harvard USPTO Patent Dataset) 2016년 1월 출원분에서
 > CPC `G06Q30`(전자상거래)으로 추린 220건입니다. 원래는 BigQuery Google Patents
 > 2021–2024 등록특허였으나, 부트캠프 종료로 공용 인프라(RDS·S3·GCP)가 정리되면서
 > 가입 없이 받을 수 있는 공개 데이터셋으로 출처를 바꿨습니다.
 >
-> **아직 측정하지 않은 것** — `precision@k` · `contradiction_coverage`는 계산 경로와
-> 라벨링 후보 70건까지 준비돼 있고 정답 라벨 작성이 남았습니다. latency p50/p95,
-> Answer/Citation Accuracy도 미측정입니다. 측정되지 않은 지표는 싣지 않았습니다.
+> **위 P@5 0.400을 그대로 읽으면 안 됩니다.** 라벨셋의 쿼리당 정답이 1~2건이라
+> **P@5의 이론적 천장이 0.457**이었습니다(7개 쿼리 중 4개가 이미 만점, 1개는 정답이
+> 0건이라 무엇을 검색해도 0점). 검색이 아니라 **측정이 개선을 담지 못하는 상태**였고,
+> rerank 가중치 14조합이 전부 같은 점수를 낸 것도 같은 이유였습니다.
+> 후보 생성을 벡터/키워드/하이브리드 세 설정의 합집합(TREC식 pooling)으로 바꾸고
+> 쿼리를 7 → 25개로 늘려 천장을 0.96까지 올렸습니다 — 하이브리드 단독 후보 풀은
+> 실제의 절반 수준이었습니다([ADR-048](AIAgentPJ_ADR_v7.md)).
+> **확정 수치는 사람 라벨 확인 후 갱신합니다.** LLM 초벌만으로 낸 잠정치는
+> 자기참조 위험이 있어 싣지 않았습니다.
+>
+> **아직 측정하지 않은 것** — Answer/Citation Accuracy, Task Success Rate,
+> 최적화 후 실행당 비용. 측정되지 않은 지표는 싣지 않았습니다.
 
 ---
 
@@ -104,7 +123,7 @@ decision을 **LLM 호출 이전에** 확정합니다. 같은 근거 → 항상 �
 | 선택 | 포기 | 이유 |
 |---|---|---|
 | **판정을 코드 규칙으로 확정**, LLM은 서술만 | LLM의 종합 판단력 | 재현성·테스트 가능성. 임계값 변경 근거가 코드에 남습니다 |
-| **rerank에 contradiction 축 추가** | 순수 relevance 정렬 | 의도는 반박 근거 상위 노출이었으나, `stance` 산출이 미구현이라 **실제로는 작동하지 않습니다**(측정으로 확인, ADR-045) |
+| **rerank에 contradiction 축 추가** | 순수 relevance 정렬 | 오랫동안 `stance` 산출이 없어 죽어 있던 축입니다. NLI는 정확도 33%로 기각(ADR-046), 적재 시점 LLM 배치 태깅으로 F1 0.912를 확인해 채택(ADR-047). 검색 지연은 0입니다 — 판정을 미리 계산해 `documents.meta`에 넣어 두기 때문입니다 |
 | **2단계 후보생성** (인덱스 → 합성식) | SQL 단순함 | 합성식을 전체 테이블 `ORDER BY`에 걸면 인덱스를 못 타 풀스캔 |
 | **프롬프트 캐싱 기각** | 입력 토큰 절감 | Sonnet 4.6 최소 캐시 prefix 1024토큰 vs 공유 prefix ~150토큰. 게다가 분석 5노드가 **병렬**이라 동시 요청이 서로의 캐시를 못 읽습니다 |
 
@@ -158,15 +177,31 @@ decision을 **LLM 호출 이전에** 확정합니다. 같은 근거 → 항상 �
 
 **AWS 없이 검색 계층만** (로컬, 비용 0)
 
+Docker가 필요한 건 **`db` 하나뿐**입니다. pgvector는 Postgres 확장이라 Windows
+설치형에는 기본 포함이 아니고, 문서·청구항·임베딩이 그 컨테이너 볼륨에 들어 있습니다
+(환경 맞추기가 아니라 데이터 저장소입니다). 나머지 스크립트는 `pip install -r
+requirements.txt` 후 호스트에서 직접 돌리는 편이 빠릅니다 — 컨테이너 기동 오버헤드가 없습니다.
+
 ```bash
 docker compose up -d db                     # postgres + pgvector, init.sql 자동 적용
 docker compose run --rm -e DATABASE_URL=postgresql://vs:vs_local@db:5432/venturescout   api python -m data.load_seed              # 시드 270건
 docker compose run --rm -e DATABASE_URL=... api python -m pipeline.indexer --batch-size 32
-pytest tests/                               # 66 passed
+pytest tests/                               # 120 passed
 ```
 
 특허 코퍼스까지 채우려면 `python -m data.collect_from_hupd --cpc G06Q30`.
 전체 절차와 트러블슈팅은 **[docs/local-setup.md](docs/local-setup.md)**.
+
+**회귀 확인** — 테스트와 검색 지표를 한 번에 재고 기준선과 diff를 찍습니다.
+LLM을 쓰지 않아 반복 실행 비용이 0입니다.
+
+```bash
+python -m eval.regression            # 기준선 대비 변화
+python -m eval.regression --save     # 현재를 기준선으로
+```
+
+`fusion_mode`·가중치·임베딩 모델도 함께 기록되므로, 지표 변화가 **코드 때문인지
+설정 때문인지** 구분됩니다.
 
 **에이전트 전체 실행**에는 Bedrock 자격증명이 추가로 필요합니다(`.env`).
 컨테이너 Python 3.11 표준, 스키마는 `db/init.sql`.
