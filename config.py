@@ -31,6 +31,19 @@ class Config:
     # ── 검색 가중치 ───────────────────────────────────────────
     vector_weight: float = 0.6
     keyword_weight: float = 0.4
+
+    # ── 하이브리드 융합 방식 ──────────────────────────────────────
+    # weighted : 두 원점수에 가중치를 곱해 그대로 더한다. **스케일이 달라 명목
+    #            가중치가 실제 가중치와 어긋난다** — 실측으로 상위 20건에서
+    #            1-cosine의 폭은 0.17인데 ts_rank는 0.73~0.84라, 0.4를 곱한
+    #            키워드가 순위 변별의 74~77%를 차지했다(seed_review만 33%).
+    #            코퍼스마다 실효 비율이 달라져 전역 상수의 의미가 없었다.
+    # minmax   : 후보군 안에서 각 항을 0~1로 편 뒤 가중합. 기본값 — 0.6/0.4가
+    #            비로소 의도대로 동작한다(ADR-049).
+    # rrf      : 순위만 쓴다(1/(k+rank)). 스케일 불일치가 정의상 사라지고 MRR·
+    #            contradiction_coverage는 가장 높지만 P@5가 떨어진다.
+    fusion_mode: str = os.getenv("FUSION_MODE", "minmax")
+    rrf_k: int = int(os.getenv("RRF_K", "60"))   # 관례값. 낮을수록 상위 순위를 더 강조
     top_k_fetch: int = 20   # DB에서 가져올 후보 수
     top_k_return: int = 10  # rerank 후 반환 수
 

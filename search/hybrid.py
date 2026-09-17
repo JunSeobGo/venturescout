@@ -37,6 +37,47 @@ class HybridSearcher:
         return conn
 
     @staticmethod
+    def _fusion_expr() -> str:
+        """벡터 항과 키워드 항을 하나의 점수로 합치는 식(SQL 조각).
+
+        **왜 방식이 여러 개인가.** 기본 `weighted`는 두 원점수에 0.6/0.4를 곱해
+        더한다. 그런데 두 항은 스케일이 다르다 — 실측으로 상위 20건에서
+        `1-cosine`은 폭이 0.17인데 `ts_rank`는 0.73~0.84다. 순위를 가르는 건
+        절대값이 아니라 폭이므로, 0.4를 곱한 키워드가 실제로는 순위 변별의
+        74~77%를 차지한다(seed_review만 33%). **명목 가중치가 실제 가중치가
+        아니고, 코퍼스마다 달라진다.**
+
+        - weighted : 기존 동작. 호환을 위해 기본값으로 둔다
+        - minmax   : 후보군 안에서 각 항을 0~1로 편 뒤 가중합. 0.6/0.4가 비로소
+                     의도대로 동작한다. 다만 후보군 구성에 따라 값이 흔들린다
+        - rrf      : 원점수를 버리고 **순위만** 쓴다(1/(k+rank)). 스케일 불일치가
+                     정의상 사라지고 튜닝할 상수가 사실상 없다. 하이브리드 검색의
+                     표준 해법
+
+        한쪽 검색에만 걸린 문서는 반대쪽 rank/score가 NULL이다 — RRF는 그 항을
+        0으로 보고(합집합의 기본 성질), minmax도 0으로 채운다.
+        """
+        mode = config.fusion_mode
+        vw, kw = config.vector_weight, config.keyword_weight
+        if mode == "rrf":
+            k = config.rrf_k
+            return (f"COALESCE({vw} / ({k} + vec_rank), 0)"
+                    f" + COALESCE({kw} / ({k} + kw_rank), 0)")
+        if mode == "minmax":
+            # 후보군 전체에 대한 min/max를 윈도우로 구해 각 항을 0~1로 편다.
+            # 분모가 0이면(모든 값이 같으면) 그 항은 변별력이 없으므로 0으로 둔다.
+            return (
+                f"{vw} * COALESCE("
+                "  (vec_score - MIN(vec_score) OVER ()) /"
+                "  NULLIF(MAX(vec_score) OVER () - MIN(vec_score) OVER (), 0), 0)"
+                f" + {kw} * COALESCE("
+                "  (COALESCE(kw_score,0) - MIN(COALESCE(kw_score,0)) OVER ()) /"
+                "  NULLIF(MAX(COALESCE(kw_score,0)) OVER ()"
+                "         - MIN(COALESCE(kw_score,0)) OVER (), 0), 0)"
+            )
+        return f"{vw} * vec_score + {kw} * COALESCE(kw_score, 0)"
+
+    @staticmethod
     def _candidate_pool(top_k: int) -> int:
         """인덱스로 뽑을 후보 풀 크기(vec/kw 각각). top_k보다 넉넉히 — 후보생성 뒤
         필터(source_type·independent_only·code_filter)로 줄어도 top_k를 채우게."""
@@ -219,14 +260,21 @@ class HybridSearcher:
 
         sql = f"""
             WITH vec AS (                          -- ① 벡터 후보 (HNSW, 출처 스코프 포함)
-                SELECT document_id
+                SELECT document_id,
+                       ROW_NUMBER() OVER (ORDER BY embedding <=> %(vec)s::vector) AS rnk
                 FROM documents
                 WHERE embedding IS NOT NULL{src_filter}
                 ORDER BY embedding <=> %(vec)s::vector
                 LIMIT %(pool)s
             ),
             kw AS (                                -- ① 키워드 후보 (GIN/tsvector, 출처 스코프 포함)
-                SELECT document_id
+                SELECT document_id,
+                       ROW_NUMBER() OVER (
+                           ORDER BY ts_rank(
+                               to_tsvector('{ts_lang}', clean_text),
+                               plainto_tsquery('{ts_lang}', %(query)s)
+                           ) DESC
+                       ) AS rnk
                 FROM documents
                 WHERE clean_text IS NOT NULL{src_filter}
                   AND to_tsvector('{ts_lang}', clean_text)
@@ -241,25 +289,25 @@ class HybridSearcher:
                 SELECT document_id FROM vec
                 UNION
                 SELECT document_id FROM kw
-            )
-            SELECT                                 -- ② 후보군에만 합성식 계산
-                d.document_id,
-                d.source_type,
-                d.ext_id,
-                d.title,
-                d.clean_text,
-                d.meta,
-                d.reliability_score,
-                d.freshness_score,
-                (
-                    {config.vector_weight}  * (1 - (d.embedding <=> %(vec)s::vector))
-                  + {config.keyword_weight} * ts_rank(
+            ),
+            scored AS (                            -- ② 후보군에만 두 항을 따로 계산
+                SELECT
+                    d.document_id, d.source_type, d.ext_id, d.title, d.clean_text,
+                    d.meta, d.reliability_score, d.freshness_score,
+                    (1 - (d.embedding <=> %(vec)s::vector)) AS vec_score,
+                    ts_rank(
                         to_tsvector('{ts_lang}', d.clean_text),
                         plainto_tsquery('{ts_lang}', %(query)s)
-                    )
-                ) AS hybrid_score
-            FROM cand
-            JOIN documents d ON d.document_id = cand.document_id
+                    ) AS kw_score,
+                    vec.rnk AS vec_rank,
+                    kw.rnk  AS kw_rank
+                FROM cand
+                JOIN documents d ON d.document_id = cand.document_id
+                LEFT JOIN vec ON vec.document_id = cand.document_id
+                LEFT JOIN kw  ON kw.document_id  = cand.document_id
+            )
+            SELECT *, {self._fusion_expr()} AS hybrid_score
+            FROM scored
             ORDER BY hybrid_score DESC
             LIMIT %(top_k)s
         """
