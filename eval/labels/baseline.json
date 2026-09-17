@@ -1,0 +1,28 @@
+{
+  "metrics": {
+    "precision_at_k_ceiling": 0.96,
+    "precision_at_k": 0.648,
+    "recall_at_k_pooled": 0.318,
+    "mrr": 0.749,
+    "ndcg_at_k": 0.808,
+    "contradiction_coverage": 0.214
+  },
+  "queries": 25,
+  "scored_queries": 25,
+  "unscorable_queries": [],
+  "config": {
+    "fusion_mode": "minmax",
+    "vector_weight": 0.6,
+    "keyword_weight": 0.4,
+    "top_k_fetch": 20,
+    "embedding_model": "AI-Growth-Lab/PatentSBERTa",
+    "rerank_w": [
+      0.4,
+      0.3,
+      0.1,
+      0.2
+    ]
+  },
+  "k": 5,
+  "elapsed_sec": 48.6
+}
